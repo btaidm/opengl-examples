@@ -30,6 +30,11 @@
 #include <string.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef M_PI
 /** M_PI is an approximation of pi. This variable is often available
  * in C without defining it yourself, but it isn't guaranteed to exist
@@ -103,8 +108,9 @@ typedef struct
  * down the line(s) of code causing an error.
  */
 #define kuhl_errorcheck() kuhl_errorcheckFileLine(__FILE__, __LINE__)
+
 // kuhl_errorcheck() calls this C function:
-int kuhl_errorcheckFileLine(char *file, int line);
+int kuhl_errorcheckFileLine(const char *file, int line);
 
 /* General tips for learning the vector and matrix functions provided by kuhl-util:
 
@@ -1469,4 +1475,7 @@ int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3
 
 void kuhl_play_sound(const char *filename);
 
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 #endif // __KUHL_UTIL_H__
