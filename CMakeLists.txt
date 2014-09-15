@@ -20,8 +20,8 @@ if(BUILD_DOCUMENTATION)
 	if(DOXYGEN_FOUND)
 	#-- Add a custom target to run Doxygen when ever the project is built
 	add_custom_target (docs 
-                     COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/Doxyfile
-                     SOURCES ${PROJECT_BINARY_DIR}/Doxyfile)
+                     COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Doxyfile
+                     SOURCES ${PROJECT_SOURCE_DIR}/Doxyfile)
 	# Add or remove 'ALL' after 'docs' above to enable/disable doxygen generation when running "make"
 	else()
 		message("Not creating Doxygen documents because doxygen was not found on this system.")
