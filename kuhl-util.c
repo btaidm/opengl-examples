@@ -1619,9 +1619,9 @@ void mat4f_ortho_new(float result[16], float left, float right, float bottom, fl
 	result[0]  =  2 / (right-left);
 	result[5]  =  2 / (top-bottom);
 	result[10] = -2 / (far-near);
-	result[12] = (right+left)/(right-left);
-	result[13] = (top+bottom)/(top-bottom);
-	result[14] = (far+near)/(far-near);
+	result[12] = -(right+left)/(right-left);
+	result[13] = -(top+bottom)/(top-bottom);
+	result[14] = -(far+near)/(far-near);
 }
 
 /** Creates a orthographic projection matrix (double). This
@@ -1650,9 +1650,9 @@ void mat4d_ortho_new(double result[16], double left, double right, double bottom
 	result[0]  =  2 / (right-left);
 	result[5]  =  2 / (top-bottom);
 	result[10] = -2 / (far-near);
-	result[12] = (right+left)/(right-left);
-	result[13] = (top+bottom)/(top-bottom);
-	result[14] = (far+near)/(far-near);
+	result[12] = -(right+left)/(right-left);
+	result[13] = -(top+bottom)/(top-bottom);
+	result[14] = -(far+near)/(far-near);
 }
 
 /** Creates a perspective projection matrix (float). This creates a matrix
@@ -1959,7 +1959,8 @@ void kuhl_print_program_info(GLuint program)
 		printf("[none!]\n");
 	else
 		printf("\n");
-
+	kuhl_errorcheck();
+	
 	numVarsInProg = 0;
 	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numVarsInProg);
 	printf("Active uniforms in program %d: ", program);
@@ -1978,6 +1979,8 @@ void kuhl_print_program_info(GLuint program)
 	else
 		printf("\n");
 
+	kuhl_errorcheck();
+	
 	GLint linkStatus=GL_FALSE, validateStatus=GL_FALSE;
 	GLint attachedShaderCount=0;
 	GLint binarySize=0;
@@ -1992,6 +1995,8 @@ void kuhl_print_program_info(GLuint program)
 	       validateStatus == GL_TRUE ? "OK" : "Fail",
 	       attachedShaderCount, binarySize,
 	       deleteStatus   == GL_TRUE ? "DELETED!" : "");
+
+	kuhl_errorcheck();
 
 }
 
@@ -2398,8 +2403,13 @@ int kuhl_geometry_collide(kuhl_geometry *geom1, float mat1[16],
 void kuhl_geometry_init(kuhl_geometry *geom)
 {
 	kuhl_errorcheck();
-	/* Create a vertex array object (VAO) */
+
+	/* Ask OpenGL for one vertex array object "name" (really an
+	 * integer that you can think of as an ID number) that we can use
+	 * for a new VAO (vertex array object) */
 	glGenVertexArrays(1, &(geom->vao));
+	/* Tell OpenGL that we are going to be using our new VAO until we
+	 * tell it otherwise with glBindVertexArray(0) */
 	glBindVertexArray(geom->vao);
 	kuhl_errorcheck();
 
@@ -2440,11 +2450,22 @@ void kuhl_geometry_init(kuhl_geometry *geom)
 		if(data[i] == 0 || components[i] == 0 || name[i] == NULL || strlen(name[i]) == 0)
 			continue;
 
+		/* A vertex array object consists of multiple buffers that
+		 * contain per-vertex information like positions, colors,
+		 * normals, texture coordinates, etc. A group of buffers can
+		 * be associated with a single VAO. */
+
+		/* Ask OpenGL for one new buffer "name" (or ID number). */
 		glGenBuffers(1, &(bo[i]));
+		/* Tell OpenGL that we are going to use this buffer until we
+		 * say otherwise. GL_ARRAY_BUFFER basically means that the
+		 * data stored in this buffer will be an array containing
+		 * vertex information. */
 		glBindBuffer(GL_ARRAY_BUFFER, bo[i]);
 		kuhl_errorcheck();
 
-		/* Copy the our data into the buffer object that is currently bound. */
+
+		/* Copy our data into the buffer object that is currently bound. */
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*geom->vertex_count*components[i], data[i], GL_STATIC_DRAW);
 		kuhl_errorcheck();
 
@@ -2475,6 +2496,7 @@ void kuhl_geometry_init(kuhl_geometry *geom)
 	geom->attrib_texcoord_bufferobject = bo[2];
 	geom->attrib_normal_bufferobject   = bo[3];
 	geom->attrib_custom_bufferobject   = bo[4];
+	
 
 	if(geom->indices != NULL && geom->indices_len > 0)
 	{
@@ -2497,20 +2519,14 @@ void kuhl_geometry_init(kuhl_geometry *geom)
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*geom->indices_len, geom->indices, GL_STATIC_DRAW);
 		kuhl_errorcheck();
 	}
-
-	if(glIsTexture(geom->texture))
-	{
-		/* We will make sure that our texture is in texture unit 0 inside
-		 * of display(). Here, we tell OpenGL that the texture that we
-		 * refer to in our GLSL program is going to be in texture unit
-		 * 0. */
-		glUniform1i(kuhl_get_uniform(geom->program, geom->texture_name), 0);
-		kuhl_errorcheck();
-	}
-
 	kuhl_geometry_sanity_check(geom);
 
-    /* Unbind VAO. */
+	/* Turn off GLSL program */
+	glUseProgram(0);
+
+    /* Unbind VAO. In the future, we can bind the vertex array object
+     * that we created and to easily recall all of the position,
+     * normal, color, texture coordinate, etc. information. */
 	glBindVertexArray(0);
 }
 
@@ -2523,9 +2539,17 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 {
 	kuhl_geometry_sanity_check(geom);
 
-	/* Use the program the user wants us to use */
-	glUseProgram(geom->program);
-	kuhl_errorcheck();
+	/* Use the program the user wants us to use. */
+	if(glIsProgram(geom->program))
+	{
+		glUseProgram(geom->program);
+		kuhl_errorcheck();
+	}
+	else
+	{
+		fprintf(stderr, "%s: Not a valid GLSL program: %d\n", __func__, geom->program);
+		return;
+	}
 
 	/* Use the vertex array object for this geometry */
 	if(glIsVertexArray(geom->vao))
@@ -2535,16 +2559,23 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 	}
 	else
 	{
-		printf("%s: Not a valid vertex array object: %d\n", __func__, geom->vao);
+		fprintf(stderr, "%s: Not a valid vertex array object: %d\n", __func__, geom->vao);
 		return;
 	}
 
-
+	/* If the user specified a valid OpenGL texture, use it. */
 	if(glIsTexture(geom->texture))
 	{
-		glActiveTexture(GL_TEXTURE0); /* Turn on texture unit 0 */
+		/* Tell OpenGL that the texture that we refer to in our GLSL
+		 * program is going to be in texture unit 0.
+		 */
+		glUniform1i(kuhl_get_uniform(geom->program, geom->texture_name), 0);
 		kuhl_errorcheck();
-		glBindTexture(GL_TEXTURE_2D, geom->texture); /* Use our previously loaded texture */
+		/* Turn on texture unit 0 */
+		glActiveTexture(GL_TEXTURE0); 
+		kuhl_errorcheck();
+		/* Bind the texture that we want to use while the correct texture unit is enabled. */
+		glBindTexture(GL_TEXTURE_2D, geom->texture); 
 		kuhl_errorcheck();
 	}
 
@@ -2564,11 +2595,13 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 		kuhl_errorcheck();
 	}
 
-
 	/* Unbind texture */
 	if(glIsTexture(geom->texture))
 		glBindTexture(GL_TEXTURE_2D, 0);
 
+	/* Unbind the GLSL program */
+	glUseProgram(0);
+	
 	/* Unbind the VAO */
 	glBindVertexArray(0);
 }

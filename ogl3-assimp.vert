@@ -6,7 +6,7 @@ in vec3 in_Normal;
 in vec3 in_Color;
 
 uniform float farPlane;
-uniform mat4 NormalMat;
+uniform mat3 NormalMat;
 uniform mat4 ModelView;
 uniform mat4 Projection;
 
@@ -20,10 +20,20 @@ void main()
 {
 	vec4 pos = vec4(in_Position.x, in_Position.y, in_Position.z, 1.0);
 	out_TexCoord = in_TexCoord;
-	out_Normal = vec3(NormalMat*vec4(in_Normal, 0)); // object -> eye coordinates
-	out_Normal = normalize(out_Normal);
+	out_Normal = normalize(NormalMat * in_Normal);
+
 	out_Color = in_Color;
-	gl_Position = Projection * ModelView * pos; // object -> unhomogenized canonical view volume
-	out_Depth = gl_Position.z / farPlane;
+	gl_Position = Projection * ModelView * pos; // object -> unhomogenized NDC
+
+	// For rendering depth onto screen:
+	// To avoid dealing with issues from non-linear z in perspective
+	// projection, we simply transform our point into camera
+	// coordinates and divide by the far plane. When the point is at
+	// the far plane, it will be white. When it is at the camera (it
+	// will be black). This calculation doesn't account for the near
+	// plane.
+	out_Depth = ((ModelView*pos).z)/-farPlane ;
+
+	// Calculate the position of the vertex in eye coordinates:
 	out_EyeCoord = vec3(ModelView * pos);
 }

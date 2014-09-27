@@ -6,7 +6,7 @@ uniform int red;
 void main() 
 {
 	if(red > 0)
-		fragColor = vec4(1.0,.2,.1,1.0); // Red
+		fragColor = vec4(0.0,1,1,1.0); // Red
 	else
 		fragColor = vec4(1.0,1.0,1.0,1.0); // White
 }

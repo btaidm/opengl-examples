@@ -1,3 +1,4 @@
+# General Files
 /CMakeCache.txt
 /CMakeFiles
 /build
@@ -133,3 +134,16 @@ com_crashlytics_export_strings.xml
 # KDE directory preferences
 .directory
 
+
+# Generated Binaries
+dgr-relay
+ogl2-assimp
+ogl2-slideshow
+ogl2-texture
+ogl2-triangle
+ogl3-assimp
+ogl3-prerend
+ogl3-texture
+ogl3-triangle
+ogl3-triangle-color
+ogl3-triangle-shade
