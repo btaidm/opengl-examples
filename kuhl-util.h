@@ -1435,8 +1435,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 void kuhl_delete_program(GLuint program);
 void kuhl_print_program_log(GLuint program);
 void kuhl_print_program_info(GLuint program);
-	
-GLint kuhl_get_uniform(GLuint program, const char *uniformName);
+GLint kuhl_get_uniform(const char *uniformName);
 
 
 void kuhl_limitfps(int fps);
@@ -1456,10 +1455,7 @@ void kuhl_geometry_delete(kuhl_geometry *geom);
 
 GLuint kuhl_read_texture_rgba_array(const char *array, int width, int height);
 
-
 int kuhl_randomInt(int min, int max);
-
-
 void kuhl_shuffle(void *array, int n, int size);
 
 
@@ -1476,7 +1472,7 @@ int kuhl_draw_model_file_ogl3(const char *modelFilename, const char *textureDirn
 int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3], float center[3]);
 #endif // end use assimp
 
-
+GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture);
 void kuhl_play_sound(const char *filename);
 
 #ifdef __cplusplus

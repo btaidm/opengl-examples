@@ -48,7 +48,7 @@ void display()
 	kuhl_errorcheck();
 
 	/* Turn on blending (note, if you are using transparent textures,
-	   the transparency may not look correctly unless you draw further
+	   the transparency may not look correct unless you draw further
 	   items before closer items. This program always draws the
 	   geometry in the same order.). */
 	glEnable(GL_BLEND);
@@ -102,12 +102,12 @@ void display()
 		glUseProgram(program);
 		kuhl_errorcheck();
 		/* Send the perspective projection matrix to the vertex program. */
-		glUniformMatrix4fv(kuhl_get_uniform(program, "Projection"),
+		glUniformMatrix4fv(kuhl_get_uniform("Projection"),
 		                   1, // number of 4x4 float matrices
 		                   0, // transpose
 		                   perspective); // value
 		/* Send the modelview matrix to the vertex program. */
-		glUniformMatrix4fv(kuhl_get_uniform(program, "ModelView"),
+		glUniformMatrix4fv(kuhl_get_uniform("ModelView"),
 		                   1, // number of 4x4 float matrices
 		                   0, // transpose
 		                   modelview); // value

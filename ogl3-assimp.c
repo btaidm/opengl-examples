@@ -38,6 +38,9 @@ char *modelTexturePath = NULL;
 int renderStyle = 0;
 
 
+#define GLSL_VERT_FILE "ogl3-assimp.vert"
+#define GLSL_FRAG_FILE "ogl3-assimp.frag"
+
 /* Called by GLUT whenever a key is pressed. */
 void keyboard(unsigned char key, int x, int y)
 {
@@ -51,7 +54,7 @@ void keyboard(unsigned char key, int x, int y)
 		case 'r':
 		{
 			int origProgram = program;
-			program = kuhl_create_program("ogl3-assimp.vert", "ogl3-assimp.frag");
+			program = kuhl_create_program(GLSL_VERT_FILE, GLSL_FRAG_FILE);
 			kuhl_delete_program(origProgram);
 			break;
 		}
@@ -143,6 +146,13 @@ void display()
 	glEnable(GL_DEPTH_TEST); // turn on depth testing
 	kuhl_errorcheck();
 
+	/* Turn on blending (note, if you are using transparent textures,
+	   the transparency may not look correct unless you draw further
+	   items before closer items.). */
+	glEnable(GL_BLEND);
+	glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+	
 	/* Render the scene once for each viewport. Frequently one
 	 * viewport will fill the entire screen. However, this loop will
 	 * run twice for HMDs (once for the left eye and once for the
@@ -166,7 +176,7 @@ void display()
 		/* Communicate matricies to OpenGL */
 		float perspective[16];
 		mat4f_frustum_new(perspective,f[0], f[1], f[2], f[3], f[4], f[5]);
-		glUniformMatrix4fv(kuhl_get_uniform(program, "Projection"),
+		glUniformMatrix4fv(kuhl_get_uniform("Projection"),
 		                   1, // count
 		                   0, // transpose
 		                   perspective); // value
@@ -177,7 +187,7 @@ void display()
 		float modelview[16];
 		mat4f_mult_mat4f_new(modelview, viewMat, modelMat);
 
-		glUniformMatrix4fv(kuhl_get_uniform(program, "ModelView"),
+		glUniformMatrix4fv(kuhl_get_uniform("ModelView"),
 		                   1, // count
 		                   0, // transpose
 		                   modelview); // value
@@ -186,14 +196,14 @@ void display()
 		mat3f_from_mat4f(normalMat, modelview);
 		mat3f_invert(normalMat);
 		mat3f_transpose(normalMat);
-		glUniformMatrix3fv(kuhl_get_uniform(program, "NormalMat"),
+		glUniformMatrix3fv(kuhl_get_uniform("NormalMat"),
 		                   1, // count
 		                   0, // transpose
 		                   normalMat); // value
 
-		glUniform1i(kuhl_get_uniform(program, "renderStyle"), renderStyle);
+		glUniform1i(kuhl_get_uniform("renderStyle"), renderStyle);
 		// Copy far plane value into vertex program so we can render depth buffer.
-		glUniform1f(kuhl_get_uniform(program, "farPlane"), f[5]);
+		glUniform1f(kuhl_get_uniform("farPlane"), f[5]);
 		
 		kuhl_errorcheck();
 
@@ -284,11 +294,7 @@ int main(int argc, char** argv)
 
 	/* Compile and link a GLSL program composed of a vertex shader and
 	 * a fragment shader. */
-	program = kuhl_create_program("ogl3-assimp.vert", "ogl3-assimp.frag");
-	glUseProgram(program);
-	kuhl_errorcheck();
-	/* Good practice: Unbind objects until we really need them. */
-	glUseProgram(0);
+	program = kuhl_create_program(GLSL_VERT_FILE, GLSL_FRAG_FILE);
 
 	dgr_init();     /* Initialize DGR based on environment variables. */
 	projmat_init(); /* Figure out which projection matrix we should use based on environment variables */

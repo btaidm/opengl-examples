@@ -11,7 +11,8 @@
 GLuint program = 0; // id value for the GLSL program
 GLuint prerendProgram = 0;
 
-GLuint prerenderTexName = 0;
+GLuint prerenderFrameBuffer = 0;
+GLuint prerenderTexID = 0;
 
 kuhl_geometry triangle;
 kuhl_geometry quad;
@@ -98,37 +99,51 @@ void display()
 		glUseProgram(program);
 		kuhl_errorcheck();
 		/* Send the perspective projection matrix to the vertex program. */
-		glUniformMatrix4fv(kuhl_get_uniform(program, "Projection"),
+		glUniformMatrix4fv(kuhl_get_uniform("Projection"),
 		                   1, // number of 4x4 float matrices
 		                   0, // transpose
 		                   perspective); // value
 		/* Send the modelview matrix to the vertex program. */
-		glUniformMatrix4fv(kuhl_get_uniform(program, "ModelView"),
+		glUniformMatrix4fv(kuhl_get_uniform("ModelView"),
 		                   1, // number of 4x4 float matrices
 		                   0, // transpose
 		                   modelview); // value
 		kuhl_errorcheck();
+
+		/* Setup prerender directly to texture once (and reuse the
+		 * framebuffer object for subsequent draw commands). */
+		if(prerenderFrameBuffer == 0)
+		{
+			prerenderFrameBuffer = kuhl_gen_framebuffer(viewport[2], viewport[3],
+			                                            &prerenderTexID);
+		}
+		/* Switch to framebuffer and set the OpenGL viewport to cover
+		 * the entire framebuffer. */
+		glBindFramebuffer(GL_FRAMEBUFFER, prerenderFrameBuffer);
+		glViewport(0,0,viewport[2], viewport[3]);
+		kuhl_errorcheck();
+
+		/* Clear the framebuffer and the depth buffer. */
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		/* Draw the geometry using the matrices that we sent to the
 		 * vertex programs immediately above */
 		kuhl_geometry_draw(&triangle);
 		kuhl_geometry_draw(&quad);
 
-		glUseProgram(0); // stop using a GLSL program.
+		/* Stop rendering to texture */
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glUseProgram(0);
+		kuhl_errorcheck();
 
+		/* Set up the viewport to draw on the screen */
+		glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+		/* Apply the texture to our geometry and draw the quad. */
+		prerendQuad.texture = prerenderTexID;
+		prerendQuad.texture_name = "tex";
+		kuhl_geometry_draw(&prerendQuad);
+		
 	} // finish viewport loop
 
-	kuhl_errorcheck();
-	glBindTexture(GL_TEXTURE_2D, prerenderTexName);
-	kuhl_errorcheck();
-	
-	int windowWidth  = glutGet(GLUT_WINDOW_WIDTH);
-	int windowHeight = glutGet(GLUT_WINDOW_HEIGHT);
-	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0,
-	                 windowWidth, windowHeight, 0);
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-	kuhl_geometry_draw(&prerendQuad);
-	
 	/* Check for errors. If there are errors, consider adding more
 	 * calls to kuhl_errorcheck() in your code. */
 	kuhl_errorcheck();
@@ -259,7 +274,7 @@ int main(int argc, char** argv)
 	glUseProgram(program);
 	kuhl_errorcheck();
 	/* Set the uniform variable in the shader that is named "red" to the value 1. */
-	glUniform1i(kuhl_get_uniform(program, "red"), 1);
+	glUniform1i(kuhl_get_uniform("red"), 1);
 	kuhl_errorcheck();
 	/* Good practice: Unbind objects until we really need them. */
 	glUseProgram(0);
@@ -269,11 +284,11 @@ int main(int argc, char** argv)
 	init_geometryTriangle(program);
 	init_geometryQuad(program);
 
-	prerendProgram = kuhl_create_program("prerend.vert", "prerend.frag");
+	prerendProgram = kuhl_create_program("ogl3-prerend.vert", "ogl3-prerend.frag");
 	init_geometryQuadPrerender(prerendProgram);	
 	glActiveTexture(GL_TEXTURE0);
-	glGenTextures(1, &prerenderTexName);
-	glBindTexture(GL_TEXTURE_2D, prerenderTexName);
+	glGenTextures(1, &prerenderTexID);
+	glBindTexture(GL_TEXTURE_2D, prerenderTexID);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

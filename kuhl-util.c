@@ -2120,39 +2120,52 @@ void kuhl_print_program_log(GLuint program)
 
 
 static int missingUniformCount = 0; /**< Used by kuhl_get_uniform() */
-/** glGetUniformLocation() with error checking. This function behaves
- * the same as glGetUniformLocation() except that when an error
- * occurs, it prints an error message if the uniform variable doesn't
- * exist (or is inactive) in the GLSL program. glGetUniformLocation()
- * only returns -1 when the uniform variable is not found.
- *
- * @param program The OpenGL shader program containing the uniform variable.
+/** Provides functionality similar to glGetUniformLocation() with
+ * error checking. However, unlike glGetUniformLocation(), this
+ * function gets the location of the variable from the active OpenGL
+ * program instead of a specified one. If a problem occurs, an
+ * appropriate error message is printed to the standard error. This
+ * function may exit or return -1 if the uniform location is not
+ * found.
  *
  * @param uniformName The name of the uniform variable.
  *
  * @return The location of the uniform variable.
  */
-GLint kuhl_get_uniform(GLuint program, const char *uniformName)
+GLint kuhl_get_uniform(const char *uniformName)
 {
+	kuhl_errorcheck();
 	if(uniformName == NULL || strlen(uniformName) == 0)
 	{
 		fprintf(stderr, "%s: You asked for the location of an uniform name, but your name was an empty string or a NULL pointer.\n", __func__);
+		return -1;
 	}
 
-	if(!glIsProgram(program))
+	GLint currentProgram = 0;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+	if(currentProgram == 0)
 	{
-		fprintf(stderr, "%s: The program you specified (%d) is not a valid GLSL program.\n", __func__, program);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "%s: Can't get the uniform location of %s because no GLSL program is currently being used.\n", __func__, uniformName);
+		return -1;
 	}
 	
-	GLint loc = glGetUniformLocation(program, uniformName);
+	if(!glIsProgram(currentProgram))
+	{
+		fprintf(stderr, "%s: The current active program (%d) is not a valid GLSL program.\n", __func__, currentProgram);
+		return -1;
+	}
+
+	GLint loc = glGetUniformLocation(currentProgram, uniformName);
 	kuhl_errorcheck();
 	if(loc == -1 && missingUniformCount < 50)
 	{
 		fprintf(stderr, "%s: Uniform variable '%s' is missing or inactive in your GLSL program.\n", __func__, uniformName);
 		missingUniformCount++;
 		if(missingUniformCount == 50)
+		{
 			fprintf(stderr, "%s: Hiding any additional error messages.\n", __func__);
+			fprintf(stderr, "%s: Remember that the GLSL variables that do not affect the appearance of your program will be set to inactive by the GLSL compiler\n", __func__);
+		}
 	}
 	return loc;
 }
@@ -2573,6 +2586,8 @@ void kuhl_geometry_init(kuhl_geometry *geom)
  @param geom The geometry to draw to the screen. */
 void kuhl_geometry_draw(kuhl_geometry *geom)
 {
+	kuhl_errorcheck();
+	
 	/* Record the OpenGL state so that we can restore it when we have
 	 * finished drawing. */
 	GLint previouslyUsedProgram = 0;
@@ -2621,7 +2636,7 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 			 * program is going to be in texture unit 0.
 			 */
 			
-			glUniform1i(kuhl_get_uniform(geom->program, geom->texture_name), 0);
+			glUniform1i(kuhl_get_uniform(geom->texture_name), 0);
 			kuhl_errorcheck();
 			/* Turn on texture unit 0 */
 			glActiveTexture(GL_TEXTURE0); 
@@ -2920,6 +2935,7 @@ void kuhl_screenshot(const char *outputImageFilename)
 	info_out.height   = windowHeight;
 	info_out.depth    = 8; // bits/color in output image
 	info_out.quality  = 85;
+	info_out.colorspace = sRGBColorspace;
 	info_out.filename = strdup(outputImageFilename);
 	info_out.comment  = NULL;
 	info_out.type     = CharPixel;
@@ -3762,7 +3778,6 @@ int kuhl_draw_model_file_ogl3(const char *modelFilename, const char *textureDirn
 	// aiDetachAllLogStreams();
 }
 
-
 /** Returns the bounding box for a model file.
  *
  * @param modelFilename The 3D model file that you want the bounding box for.
@@ -3795,6 +3810,77 @@ int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3
 	return 1;
 }
 #endif // KUHL_UTIL_USE_ASSIMP
+
+/* Creates a new framebuffer object (with a depth buffer) that we can
+ * render to and therefore render directly to a texture.
+ *
+ * @param width The width of the framebuffer to create
+ *
+ * @param height The height of the framebuffer to create
+ *
+ * @param texture To be filled with a texture ID which the framebuffer
+ * will be connected to.
+ *
+ * @return Returns a framebuffer id that can be enabled with
+ * glBindFramebuffer().
+ */
+GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture)
+{
+	GLint origBoundTexture;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, &origBoundTexture);
+	GLint origBoundFrameBuffer;
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &origBoundFrameBuffer);
+	GLint origBoundRenderBuffer;
+	glGetIntegerv(GL_RENDERBUFFER_BINDING, &origBoundRenderBuffer);
+	
+	// set up texture
+	glGenTextures(1, texture);
+	glBindTexture(GL_TEXTURE_2D, *texture);
+	glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	// set up frame buffer object (FBO)
+	GLuint framebuffer = 0;
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+	// setup depth buffer
+	GLuint depthbuffer = 0;
+	glGenRenderbuffers(1, &depthbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+	// Connect FBO to depth buffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER,
+	                          GL_DEPTH_ATTACHMENT,
+	                          GL_RENDERBUFFER,
+	                          depthbuffer);
+
+	// Connect FBO to texture
+	glFramebufferTexture2D(GL_FRAMEBUFFER,
+	                       GL_COLOR_ATTACHMENT0,
+	                       GL_TEXTURE_2D,
+	                       *texture,      // texture id
+	                       0);            // mipmap level
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		printf("%s: Unable to set up framebuffer\n", __func__);
+		exit(1);
+	}
+	kuhl_errorcheck();
+
+	// Restore binding
+	glBindTexture(GL_TEXTURE_2D, origBoundTexture);
+	glBindFramebuffer(GL_FRAMEBUFFER, origBoundFrameBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, origBoundRenderBuffer);
+	kuhl_errorcheck();
+	return framebuffer;
+}
+
 
 
 /** The time at which kuhl_limitfps() was last called. */
