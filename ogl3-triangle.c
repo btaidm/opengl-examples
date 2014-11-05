@@ -65,6 +65,7 @@ void display()
 		/* Get the view or camera matrix; update the frustum values if needed. */
 		float viewMat[16];
 		viewmat_get(viewMat, f, viewportID);
+        mat4f_print(viewMat);
 
 		/* Create a 4x4 perspective projection matrix from the frustum values. */
 		float perspective[16];
