@@ -150,4 +150,9 @@ com_crashlytics_export_strings.xml
 /ogl3-triangle
 /ogl3-triangle-color
 /ogl3-triangle-shade
+<<<<<<< HEAD
 /ogl3-picker
+=======
+/ogl3-picker
+/ogl3-slerp
+>>>>>>> upstream/master

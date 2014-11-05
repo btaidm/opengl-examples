@@ -43,6 +43,19 @@ extern "C" {
 #define M_PI 3.14159265358979323846
 #endif
 
+/** Maximum number of bones that can be sent to GLSL program */
+#define MAX_BONES 128
+	
+#if KUHL_UTIL_USE_ASSIMP
+typedef struct
+{
+	int count; /**< Number of bones in this struct */
+	unsigned int mesh; /**< The bones in this struct are associated with this matrix index */
+	char names[MAX_BONES][256]; /**< bone names */
+	float matrices[MAX_BONES][16]; /**< Transformation matrices for each bone */
+} kuhl_bonemat;
+#endif
+	
 /** The kuhl_geometry struct is used to quickly draw 3D objects in
  * OpenGL 3.0. For more information, see the example programs and the
  * documentation for kuhl_geometry_zero(), kuhl_geometry_init(), and
@@ -85,12 +98,33 @@ typedef struct
 	GLuint   attrib_normal_components; /**< Typically 3 (x, y, z) - User should set this. */
 	GLuint   attrib_normal_bufferobject; /**< The OpenGL buffer object storing the normal information - Set by kuhl_geometry_init(). */
 
+	GLfloat* attrib_boneWeight;
+	char*    attrib_boneWeight_name;
+	GLuint   attrib_boneWeight_components;
+	GLuint   attrib_boneWeight_bufferobject;
+
+	GLfloat* attrib_boneIndex;
+	char*    attrib_boneIndex_name;
+	GLuint   attrib_boneIndex_components;
+	GLuint   attrib_boneIndex_bufferobject;
+	
 	GLfloat* attrib_custom; /**< A list of some custom attribute each vertex - User should set this if geometry has information not specified in this struct. The list should contain attrib_custom_components * vertex_count floats.*/
 	char*    attrib_custom_name; /**< The GLSL variable that the custom data should be sent to. - User should set this. */
 	GLuint   attrib_custom_components; /**< How many components does the custom data have for each vertex? - User should set this. */
 	GLuint   attrib_custom_bufferobject; /**< The OpenGL buffer object storing the custom information - Set by kuhl_geometry_init(). */
+
+	float matrix[16]; /**< A matrix that all of this geometry should be transformed by */
+
+	int has_been_drawn;
+	
+#if KUHL_UTIL_USE_ASSIMP
+	struct aiNode *assimp_node; /**< Assimp node that this kuhl_geometry object was created from. */
+	struct aiScene *assimp_scene; /**< Assimp scene that this kuhl_geometry object is a part of. */
+	kuhl_bonemat *bones;
+#endif
 	
 } kuhl_geometry;
+
 
 /** Call kuhl_errorcheck() with no parameters frequently for easy
  * OpenGL error checking. OpenGL doesn't report errors by
@@ -1314,30 +1348,29 @@ static inline void mat4d_print(const double m[16])
 { matNd_print(m, 4); }
 
 /** Create a 3x3 double matrix from a 3x3 float matrix.
-    @param dest Location to store now matrix.
+    @param dest Location to store new matrix.
     @param src Location of the original matrix.
 */
 static inline void mat3d_from_mat3f(double dest[ 9], const float  src[ 9])
 { for(int i=0; i<9; i++) dest[i] = (double) src[i]; }
 /** Create a 4x4 double matrix from a 4x4 float matrix.
-    @param dest Location to store now matrix.
+    @param dest Location to store new matrix.
     @param src Location of the original matrix.
 */
 static inline void mat4d_from_mat4f(double dest[16], const float  src[16])
 { for(int i=0; i<16; i++) dest[i] = (double) src[i]; }
 /** Create a 3x3 float matrix from a 3x3 double matrix.
-    @param dest Location to store now matrix.
+    @param dest Location to store new matrix.
     @param src Location of the original matrix.
 */
 static inline void mat3f_from_mat3d(float  dest[ 9], const double src[ 9])
 { for(int i=0; i<9; i++) dest[i] = (float) src[i]; }
 /** Create a 4x4 float matrix from a 4x4 double matrix.
-    @param dest Location to store now matrix.
+    @param dest Location to store new matrix.
     @param src Location of the original matrix.
 */
 static inline void mat4f_from_mat4d(float  dest[16], const double src[16])
 { for(int i=0; i<16; i++) dest[i] = (float) src[i]; }
-
 
 
 /* mat[43][df]_invert_new() will invert a matrix and store the
@@ -1496,7 +1529,10 @@ void kuhl_video_record(const char *fileLabel, int fps);
 
 #ifdef KUHL_UTIL_USE_ASSIMP
 int kuhl_draw_model_file_ogl2(const char *modelFilename, const char *textureDirname);
+void kuhl_update_model_file_ogl3(const char *modelFilename, unsigned int animationNum, float t);
+int kuhl_load_model_file_ogl3(const char *modelFilename, const char *textureDirname, GLuint program);
 int kuhl_draw_model_file_ogl3(const char *modelFilename, const char *textureDirname, GLuint program);
+const struct aiScene* kuhl_model_file_aiScene(const char *modelFilename);
 int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3], float center[3]);
 #endif // end use assimp
 

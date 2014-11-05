@@ -13,6 +13,7 @@ RELAY_LISTEN_PORT=${MASTER_SEND_PORT}
 RELAY_SEND_TO_IP=10.1.255.255     # This is a broadcast address to send packets to all tiles
 RELAY_SEND_PORT=${SLAVE_LISTEN_PORT}
 
+ALL_TILES="tile-0-0.local tile-0-1.local tile-0-2.local tile-0-3.local tile-0-4.local tile-0-5.local tile-0-6.local tile-0-7.local"
 
 # If we exit unexpectedly, kill all of the background processes.
 trap 'cleanup' ERR   # process exits with non-zero exit code
@@ -49,7 +50,7 @@ function printMessage()
 }
 
 # Make sure the user isn't running this on a host that it isn't supposed to run on.
-for i in ivs.research.mtu.edu tile-0-0.local tile-0-1.local tile-0-2.local tile-0-3.local tile-0-4.local tile-0-5.local tile-0-6.local tile-0-7.local; do
+for i in ivs.research.mtu.edu ${ALL_TILES}; do
     denyHostname "$i"
 done
 
@@ -94,7 +95,7 @@ fi
 # Create a persistant ssh connection that we will reuse. This will
 # just make it so we have to SSH into ivs once (might be slow, might
 # prompt for a password) but then subsequent ssh calls are nearly
-# instantanious.
+# instantaneous.
 #  Use -x to explicitly disable X forwarding since we don't need it (and the user might have specified it as an option in their own ssh config file)
 # Use -S to create/specify an ssh control socket.
 # Use -t to force tty allocation.
@@ -117,7 +118,9 @@ fi
 printMessage "Connected to IVS."
 
 # Create an ssh command with appropriate arguments that we can use
-# repeatedly to run programs on IVS. 
+# repeatedly to run programs on IVS. Use -x to explicitly disable X
+# forwarding since we don't need it (and the user might have specified
+# it as an option in the ssh config file).
 SSH_CMD="ssh -q -t -t -x -S ./.temp-dgr-ssh-socket ${IVS_USER}@${IVS_HOSTNAME}"
 
 # Skip the directory deletion so that rsync can just update the files at the destination instead of copying everything over each time.
@@ -129,11 +132,23 @@ ${SSH_CMD} mkdir -p "$IVS_TEMP_DIR"
 printMessage "Copying files to $IVS_TEMP_DIR on IVS..."
 rsync -ah -e ssh --exclude=.svn --exclude=.git --exclude=CMakeCache.txt --exclude=CMakeFiles --checksum --partial --no-whole-file --inplace --delete . ${IVS_USER}@${IVS_HOSTNAME}:${IVS_TEMP_DIR}
 
-printMessage "Running sync on IVS..."
-${SSH_CMD} sync
+# This check adds about a second to our startup time and usually works
+# successfully. However, it is a helpful in the unlikely case where a
+# tile goes down.
+printMessage "Checking that tile nodes are accessible from IVS..."
+for i in ${ALL_TILES}; do
+	echo "Testing connection to tile $i"
+	if ! ${SSH_CMD} ssh $i 'exit'; then
+		echo "ERROR: Unable to establish an ssh connection with tile: $i"
+		echo "Perhaps the tile is turned off or you can't ssh to it?"
+		echo "To run without a specific tile, remove the tile from the ALL_TILES variable."
+		exit 1
+	fi
+done
+
 
 printMessage "Running cmake on IVS..."
-${SSH_CMD} "cd \"${IVS_TEMP_DIR}\" && /export/apps/src/cmake/2.8.9/cmake-2.8.9/bin/cmake ."
+${SSH_CMD} "cd \"${IVS_TEMP_DIR}\" && rm -rf CMakeCache.txt CMakeFiles && /export/apps/src/cmake/2.8.9/cmake-2.8.9/bin/cmake ."
 printMessage "Compiling $1 and dgr-relay IVS..."
 ${SSH_CMD} make --quiet --jobs=3 -C "${IVS_TEMP_DIR}" "$1" dgr-relay
 
@@ -165,7 +180,7 @@ export DGR_MODE="master"
 export DGR_MASTER_DEST_PORT=${RELAY_LISTEN_PORT}
 export DGR_MASTER_DEST_IP=${IVS_HOSTNAME}
 export PROJMAT_FRUSTUM="${HORIZ_LEFT} ${HORIZ_RIGHT} ${VERT_BOT} ${VERT_TOP} ${NEAR} ${FAR}"
-export PROJMAT_MASTER_FRUSTUM="$PROJMAT_FRUSTUM"
+export PROJMAT_MASTER_FRUSTUM="${PROJMAT_FRUSTUM}"
 export PROJMAT_WINDOW_SIZE="1152 432"
 printMessage "Starting DGR master on `hostname`"
 printMessage "DGR master is sending packets to ${DGR_MASTER_DEST_IP}:${DGR_MASTER_DEST_PORT}"
@@ -230,7 +245,7 @@ function getFrustum() {
 }
 
 
-for tile in tile-0-0.local tile-0-1.local tile-0-2.local tile-0-3.local tile-0-4.local tile-0-5.local tile-0-6.local tile-0-7.local; do
+for tile in ${ALL_TILES}; do
     printMessage "Starting DGR slave on tile ${tile}, listening on port ${SLAVE_LISTEN_PORT}"
 	FRUSTUM=`getFrustum ${tile}`
 	echo ${FRUSTUM}
@@ -261,7 +276,7 @@ while [[ ! -r $1 ]]; do
    echo ${tile} does not have $1 yet, waiting...
    sleep .5
    cd ${IVS_TEMP_DIR}
-done
+done # end while loop waiting for updated files
 \"${@}\""
     ${SSH_CMD} "ssh -t ${tile} \"${RUN_ON_TILE}\"" &
 done

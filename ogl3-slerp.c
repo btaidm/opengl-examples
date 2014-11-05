@@ -8,12 +8,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <GL/glew.h>
-
-#ifdef __APPLE__
-#include <GLUT/glut.h>
-#else
 #include <GL/freeglut.h>
-#endif
 
 #include "kuhl-util.h"
 #include "dgr.h"
@@ -40,8 +35,7 @@ float placeToPutModel[3] = { 0, 0, 0 };
 GLuint scene_list = 0; // display list for model
 char *modelFilename = NULL;
 char *modelTexturePath = NULL;
-int renderStyle = 0;
-
+int rotateStyle = 0;
 
 #define GLSL_VERT_FILE "ogl3-assimp.vert"
 #define GLSL_FRAG_FILE "ogl3-assimp.frag"
@@ -65,19 +59,15 @@ void keyboard(unsigned char key, int x, int y)
 		}
 				
 		case ' ':
-			renderStyle++;
-			if(renderStyle > 7)
-				renderStyle = 0;
-			switch(renderStyle)
+			rotateStyle++;
+			if(rotateStyle > 3)
+				rotateStyle = 0;
+			switch(rotateStyle)
 			{
-				case 0: printf("Render style: Diffuse (headlamp light)\n"); break;
-				case 1: printf("Render style: Texture\n"); break;
-				case 2: printf("Render style: Vertex color\n"); break;
-				case 3: printf("Render style: Normals\n"); break;
-				case 4: printf("Render style: Texture coordinates\n"); break;
-				case 5: printf("Render style: Front (green) and back (red) faces based on winding\n"); break;
-				case 6: printf("Render style: Front (green) and back (red) based on normals\n"); break;
-				case 7: printf("Render style: Depth (white=far; black=close)\n"); break;
+				case 0: printf("Interpolate Euler angles\n"); break;
+				case 1: printf("Interpolate rotation matrices\n"); break;
+				case 2: printf("Interpolate quaternions\n"); break;
+				case 3: printf("Interpolate quaternion (slerp)\n"); break;
 			}
 			break;
 	}
@@ -106,17 +96,68 @@ void get_model_matrix(float result[16])
 			mat4f_scale_new(scale, inchesToMeters, inchesToMeters, inchesToMeters);
 		}
 		mat4f_mult_mat4f_new(result, translate, scale);
-		
-		
 		return;
 	}
 	
 	/* Change angle for animation. */
-	int count = glutGet(GLUT_ELAPSED_TIME) % 10000; // get a counter that repeats every 10 seconds
+	int count = glutGet(GLUT_ELAPSED_TIME) % 4000; // get a counter that repeats every 10 seconds
 	/* Animate the model if there is animation information available. */
-	kuhl_update_model_file_ogl3(modelFilename, 0, count/1000.0);
+//	kuhl_update_model_file_ogl3(modelFilename, 0, count/1000.0);
 	dgr_setget("count", &count, sizeof(int));
 
+	float rotateAnimate[16];
+	mat4f_identity(rotateAnimate);
+	float percentComplete = count/4000.0;
+//	printf("percent complete %f\n", percentComplete);
+	
+	float startEuler[3] = { 0, 90, 0 };
+	float endEuler[3] = { 90, 00, 90 };
+	float startMatrix[16], endMatrix[16];
+	mat4f_rotateEuler_new(startMatrix, startEuler[0], startEuler[1], startEuler[2], "XYZ");
+	mat4f_rotateEuler_new(endMatrix, endEuler[0], endEuler[1], endEuler[2], "XYZ");
+
+	if(rotateStyle == 0) // Interpolate eulers
+	{
+
+		float interpolate[3] = { 0,0,0 };
+		vec3f_scalarMult(startEuler, 1-percentComplete);
+		vec3f_scalarMult(endEuler, percentComplete);
+		vec3f_add_new(interpolate, startEuler, endEuler);
+		mat4f_rotateEuler_new(rotateAnimate, interpolate[0], interpolate[1], interpolate[2], "XYZ");
+	}
+	else if(rotateStyle == 1) // Interpolate matrices
+	{
+		for(int i=0; i<16; i++)
+		{
+			rotateAnimate[i] = startMatrix[i] * (1-percentComplete) +
+				endMatrix[i] * percentComplete;
+		}
+	}
+	else if(rotateStyle == 2) // interpolate quaternions - linear
+	{
+		float startQuat[4], endQuat[4];
+		float interpQuat[4];
+		quatf_from_mat4f(startQuat, startMatrix);
+		quatf_from_mat4f(endQuat, endMatrix);
+		for(int i=0; i<4; i++)
+		{
+			interpQuat[i] = startQuat[i]*(1-percentComplete) +
+				endQuat[i] * percentComplete;
+		}
+		quatf_normalize(interpQuat);
+		mat4f_rotateQuatVec_new(rotateAnimate, interpQuat);
+	}
+	else if(rotateStyle == 3) // quaternion slerp
+	{
+		float startQuat[4], endQuat[4];
+		float interpQuat[4];
+		quatf_from_mat4f(startQuat, startMatrix);
+		quatf_from_mat4f(endQuat, endMatrix);
+		quatf_slerp_new(interpQuat, startQuat, endQuat, percentComplete);
+		mat4f_rotateQuatVec_new(rotateAnimate, interpQuat);
+	}
+	
+	
 	/* Calculate the width/height/depth of the bounding box and
 	 * determine which one of the three is the largest. Then, scale
 	 * the scene by 1/(largest value) to ensure that it fits in our
@@ -138,14 +179,13 @@ void get_model_matrix(float result[16])
 
 	mat4f_mult_mat4f_new(result, moveToOrigin, result);
 	mat4f_mult_mat4f_new(result, scaleBoundBox, result);
+	mat4f_mult_mat4f_new(result, rotateAnimate, result);
 	mat4f_mult_mat4f_new(result, moveToLookPoint, result);
 }
 
 void display()
 {
 	dgr_update();
-
-	dgr_setget("style", &renderStyle, sizeof(int));
 
 	// Clear the screen to black, clear the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -198,7 +238,7 @@ void display()
 		                   0, // transpose
 		                   modelview); // value
 
-		glUniform1i(kuhl_get_uniform("renderStyle"), renderStyle);
+		glUniform1i(kuhl_get_uniform("renderStyle"), 0);
 		// Copy far plane value into vertex program so we can render depth buffer.
 		glUniform1f(kuhl_get_uniform("farPlane"), f[5]);
 		
@@ -211,12 +251,7 @@ void display()
 
 	} // finish viewport loop
 
-	int time = glutGet(GLUT_ELAPSED_TIME);
-	float fps = kuhl_getfps(time);
-	if(time % 1000 == 0)
-		printf("Frames per second: %0.1f\n", fps);
-		
-	
+
 	/* Check for errors. If there are errors, consider adding more
 	 * calls to kuhl_errorcheck() in your code. */
 	kuhl_errorcheck();
@@ -262,17 +297,13 @@ int main(int argc, char** argv)
 	glutInitWindowSize(512, 512);
 	/* Ask GLUT to for a double buffered, full color window that
 	 * includes a depth buffer */
-#ifdef __APPLE__
-	glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
-#else
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	glEnable(GL_MULTISAMPLE);
 	glutInitContextVersion(3,0);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE); // Don't allow deprecated OpenGL calls.
 	glutCreateWindow(argv[0]); // set window title to executable name
-#endif
-	glEnable(GL_MULTISAMPLE);
-	
+
 	/* Initialize GLEW */
 	glewExperimental = GL_TRUE;
 	GLenum glewError = glewInit();
