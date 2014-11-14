@@ -9,7 +9,11 @@
 
 
 #include <GL/glew.h>
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
 #include <GL/freeglut.h>
+#endif
 
 #define __GNU_SOURCE // make sure are allowed to use GNU extensions. Redundant if compiled with -std=gnu99
 
@@ -1981,7 +1985,30 @@ char* kuhl_text_read(const char *filename)
 	FILE *fp = fopen(filename,"rt");
 	int readChars;
 
-	if( fp == NULL)
+#ifdef __linux
+	if(fp == NULL)
+	{
+		/* If we can't open the filename directly, then try opening it
+		   with the full path based on the path to the
+		   executable. This allows us to more easily run programs from
+		   outside of the same directory that the executable that the
+		   executable resides without having to specify an absolute
+		   path to our shader programs. */
+		char exe[1024];
+		ssize_t len = readlink("/proc/self/exe", exe, 1023);
+		exe[len]='\0';
+		char *dir = dirname(exe);
+		char newfilename[1024];
+		snprintf(newfilename, 1024, "%s/%s", dir, filename);
+		fp = fopen(newfilename,"rt");
+		if(fp != NULL)
+		{
+			printf("NOTE: %s was not found; using %s\n", filename, newfilename);
+		}
+	}
+#endif
+
+	if(fp == NULL)
 	{
 		fprintf(stderr, "ERROR: Can't open %s\n", filename);
 		exit(1);
@@ -2001,7 +2028,7 @@ char* kuhl_text_read(const char *filename)
 	if(feof(fp) == 0)
 	{
 		fprintf(stderr, "ERROR: Can't read %s\n", filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	fclose(fp);
@@ -2024,7 +2051,7 @@ GLuint kuhl_create_shader(const char *filename, GLuint shader_type)
 	    shader_type != GL_VERTEX_SHADER ) ||
 	   filename == NULL)
 	{
-		fprintf(stderr, "kuhl_create_shader(): ERROR: You passed inappropriate information into this function.\n");
+		fprintf(stderr, "%s: ERROR: You passed inappropriate information into this function.\n", __func__);
 		return 0;
 	}
 
@@ -2033,13 +2060,13 @@ GLuint kuhl_create_shader(const char *filename, GLuint shader_type)
 	 * OpenGL to be guaranteed that the functions exist. */
 	if(shader_type == GL_FRAGMENT_SHADER && !glewIsSupported("GL_ARB_fragment_shader") && !glewIsSupported("GL_VERSION_2_0"))
 	{
-		fprintf(stderr, "kuhl_create_shader(): ERROR: glew said fragment shaders are not supported on this machine.\n");
-		exit(1);
+		fprintf(stderr, "%s: ERROR: glew said fragment shaders are not supported on this machine.\n", __func__);
+		exit(EXIT_FAILURE);
 	}
 	if(shader_type == GL_VERTEX_SHADER && !glewIsSupported("GL_ARB_vertex_shader") && !glewIsSupported("GL_VERSION_2_0"))
 	{
-		fprintf(stderr, "kuhl_create_shader(): ERROR: glew said vertex shaders are not supported on this machine.\n");
-		exit(1);
+		fprintf(stderr, "%s: ERROR: glew said vertex shaders are not supported on this machine.\n", __func__);
+		exit(EXIT_FAILURE);
 	}
 
 	/* read in program from the text file */
@@ -2066,7 +2093,7 @@ GLuint kuhl_create_shader(const char *filename, GLuint shader_type)
 	GLint shaderCompileStatus = GL_FALSE;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &shaderCompileStatus);
 	if(shaderCompileStatus == GL_FALSE)
-		exit(1);
+		exit(EXIT_FAILURE);
 
 	return shader;
 }
@@ -2196,7 +2223,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 	       program, vertexFilename, fragFilename);
 	
 	/* Create the shaders */
-	GLuint fragShader = kuhl_create_shader(fragFilename, GL_FRAGMENT_SHADER);
+	GLuint fragShader   = kuhl_create_shader(fragFilename, GL_FRAGMENT_SHADER);
 	GLuint vertexShader = kuhl_create_shader(vertexFilename, GL_VERTEX_SHADER);
 
 	/* Attach shaders, check for errors. */
@@ -3631,17 +3658,27 @@ static int kuhl_private_assimp_load(const char *modelFilename, const char *textu
 
 	/* We will load the file and do significant processing (split
 	 * large meshes into smaller ones, triangulate polygons in meshes,
-	 * apply transformation matrices. For more information about model loading options, see:
+	 * apply transformation matrices. For more information about model
+	 * loading options, see:
 	 * http://assimp.sourceforge.net/lib_html/postprocess_8h.html
 	 *
 	 * The postprocess procedures can greatly influence how long it
 	 * takes to load a model. If you are trying to load a large model,
-	 * try setting the post-process settings to NULL.
+	 * try setting the post-process settings to 0.
 	 *
-	 * Other options:
+	 * Other options which trigger multiple other options:
 	 * aiProcessPreset_TargetRealtime_Fast
 	 * aiProcessPreset_TargetRealtime_Quality
 	 * aiProcessPreset_TargetRealtime_MaxQuality
+	 *
+	 * Individual options:
+	 * 0                     - do nothing
+	 * aiProcess_Triangulate - Triangulate polygons into triangles
+	 * aiProcess_SortByPType - Put each primitive type into its own mesh
+	 * aiProcess_GenNormals  - Generate flat normals if normals aren't present in file
+	 * aiProcess_GenSmoothNormals - Generate smooth normals if normals aren't present in file
+	 * aiProcess_LimitBoneWeights - Limits bone weights per vertex to 4
+	 * aiProcess_JoinIdenticalVertices - Ensures that the model uses an index buffer.
 	 */
 	const struct aiScene* scene = aiImportFile(modelFilenameVarying, aiProcessPreset_TargetRealtime_Quality);
 	free(modelFilenameVarying);
@@ -4187,6 +4224,30 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 			geom.attrib_color_components = 3;
 			geom.attrib_color_name = "in_Color";
 		}
+		/* If there are no vertex colors, try to use material colors instead */
+		else
+		{
+			/* It would be more efficient to send material colors as a
+			 * uniform variable. However, by using this approach, we
+			 * don't need to use both a material color uniform and a
+			 * vertex color attribute in a GLSL program that displays
+			 * a model. */
+			const struct aiMaterial *mtl = sc->mMaterials[mesh->mMaterialIndex];
+			struct aiColor4D diffuse;
+			if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse))
+			{
+				float *colors = malloc(sizeof(float)*mesh->mNumVertices*3);
+				for(unsigned int i=0; i<mesh->mNumVertices; i++)
+				{
+					colors[i*3+0] = diffuse.r;
+					colors[i*3+1] = diffuse.g;
+					colors[i*3+2] = diffuse.b;
+				}
+				geom.attrib_color = colors;
+				geom.attrib_color_components = 3;
+				geom.attrib_color_name = "in_Color";
+			}
+		}
 		
 		/* Store the texture coordinate attribute */
 		if(mesh->mTextureCoords != NULL && mesh->mTextureCoords[0] != NULL)
@@ -4338,7 +4399,7 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 		       mesh->mNumVertices,
 		       mesh->mNumFaces*3,
 		       mesh->mNormals       == NULL ? "no" : "yes",
-		       mesh->mColors        == NULL ? "no" : "yes",
+		       mesh->mColors==NULL || mesh->mColors[0]==NULL ? "no" : "yes",
 		       mesh->mTextureCoords == NULL ? "no" : "yes",
 		       mesh->mNumBones,
 		       geom.texture         == 0    ? "(null)" : texPath.data);
