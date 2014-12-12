@@ -140,7 +140,6 @@ com_crashlytics_export_strings.xml
 
 # Generated Binaries
 /dgr-relay
-/ogl2-assimp
 /ogl2-slideshow
 /ogl2-texture
 /ogl2-triangle
@@ -150,9 +149,6 @@ com_crashlytics_export_strings.xml
 /ogl3-triangle
 /ogl3-triangle-color
 /ogl3-triangle-shade
-<<<<<<< HEAD
-/ogl3-picker
-=======
 /ogl3-picker
 /ogl3-slerp
->>>>>>> upstream/master
+/ogl3-explode

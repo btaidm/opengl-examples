@@ -19,6 +19,12 @@
 #include "dgr.h"
 #include "projmat.h"
 #include "viewmat.h"
+
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <assimp/anim.h>
+
 GLuint program = 0; // id value for the GLSL program
 kuhl_geometry *modelgeom = NULL;
 float bbox[6];
@@ -42,10 +48,86 @@ float placeToPutModel[3] = { 0, 0, 0 };
 GLuint scene_list = 0; // display list for model
 char *modelFilename = NULL;
 char *modelTexturePath = NULL;
-int rotateStyle = 0;
+int renderStyle = 2;
+
+struct aiScene *scene;
+kuhl_geometry geom;
+
+typedef struct {
+	GLfloat velocity[3];
+} particle;
+
+particle **particles;
 
 #define GLSL_VERT_FILE "ogl3-assimp.vert"
 #define GLSL_FRAG_FILE "ogl3-assimp.frag"
+
+/** Give each vertex a velocity when the explosion occurs. */
+void explode()
+{
+	kuhl_geometry *g = modelgeom;
+	for(unsigned int i=0; i<kuhl_geometry_count(modelgeom); i++)
+	{
+		/* Get the normal information from each of the vertices. */
+		GLint numFloats = 0;
+		GLfloat *norm = kuhl_geometry_attrib_get(g, "in_Normal",
+		                                         &numFloats);
+		
+		/* Calculate the velocity of each vertex when the explosion occurs */
+		for(unsigned int j=0; j<g->vertex_count; j++)
+		{
+			// Start by setting the velocity equal to the normal to
+			// make the particles move out.
+			vec3f_copy(particles[i][j].velocity, &norm[j*3]);
+
+			// Instead of moving the particles only in the direction
+			// of the normal, make them move 'up' (in object
+			// coordinates) too.
+			particles[i][j].velocity[1] += .5;
+
+			// Add a bit of randomness
+			for(int k=0; k<3; k++)
+				particles[i][j].velocity[k] += (drand48()-.5);
+		}
+		g = g->next;
+	}
+}
+
+/** Update the vertex positions and the velocity stored in the
+ * particles array. */
+void update()
+{
+	kuhl_geometry *g = modelgeom;
+	for(unsigned int i=0; i<kuhl_geometry_count(modelgeom); i++)
+	{
+		int numFloats = 0;
+		GLfloat *pos = kuhl_geometry_attrib_get(g, "in_Position",
+		                                        &numFloats);
+
+		for(unsigned int j=0; j<g->vertex_count; j++)
+		{
+			/* If the first point isn't moving, don't update anything */
+			if(vec3f_norm(particles[i][j].velocity) == 0)
+				return;
+
+			/* Gravity is pushing particles down -Y, but we are
+			 * operating in object coordinates. If GeomTransform
+			 * (i.e., g->matrix) is used to rotate the model, then
+			 * gravity might not push the particles down in world
+			 * coordinates. */
+			float accel[3] = { 0, -1, 0};
+			float timestep = 0.1f; // change this to change speed of explosion
+			for(int k=0; k<3; k++)
+			{
+				pos[j*3+k] += timestep * (particles[i][j].velocity[k] + timestep * accel[k]/2);
+				particles[i][j].velocity[k] += timestep * accel[k];
+			}
+		}
+		g = g->next;
+	}
+}
+
+
 
 /* Called by GLUT whenever a key is pressed. */
 void keyboard(unsigned char key, int x, int y)
@@ -57,27 +139,77 @@ void keyboard(unsigned char key, int x, int y)
 		case 27: // ASCII code for Escape key
 			exit(0);
 			break;
-		case 'r':
+		case '+': // increase size of points and width of lines
 		{
-			// Reload GLSL program from disk
-			kuhl_delete_program(program);
-			program = kuhl_create_program(GLSL_VERT_FILE, GLSL_FRAG_FILE);
-			/* Apply the program to the model geometry */
-			kuhl_geometry_program(modelgeom, program, KG_FULL_LIST);
+			GLfloat currentPtSize;
+			GLfloat sizeRange[2];
+			glGetFloatv(GL_POINT_SIZE, &currentPtSize);
+			glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange);
+			GLfloat temp = currentPtSize+1;
+			if(temp > sizeRange[1])
+				temp = sizeRange[1];
+			glPointSize(temp);
+			printf("Point size is %f (can be between %f and %f)\n", temp, sizeRange[0], sizeRange[1]);
+			kuhl_errorcheck();
 
+			GLfloat currentLineWidth;
+			GLfloat widthRange[2];
+			glGetFloatv(GL_LINE_WIDTH, &currentLineWidth);
+			glGetFloatv(GL_SMOOTH_LINE_WIDTH_RANGE, widthRange);
+			temp = currentLineWidth+1;
+			if(temp > widthRange[1])
+				temp = widthRange[1];
+			glLineWidth(temp);
+			printf("Line width is %f (can be between %f and %f)\n", temp, widthRange[0], widthRange[1]);
+			kuhl_errorcheck();
 			break;
 		}
-				
-		case ' ':
-			rotateStyle++;
-			if(rotateStyle > 3)
-				rotateStyle = 0;
-			switch(rotateStyle)
+		case '-': // decrease size of points and width of lines
+		{
+			GLfloat currentPtSize;
+			GLfloat sizeRange[2];
+			glGetFloatv(GL_POINT_SIZE, &currentPtSize);
+			glGetFloatv(GL_SMOOTH_POINT_SIZE_RANGE, sizeRange);
+			GLfloat temp = currentPtSize-1;
+			if(temp < sizeRange[0])
+				temp = sizeRange[0];
+			glPointSize(temp);
+			printf("Point size is %f (can be between %f and %f)\n", temp, sizeRange[0], sizeRange[1]);
+			kuhl_errorcheck();
+
+			GLfloat currentLineWidth;
+			GLfloat widthRange[2];
+			glGetFloatv(GL_LINE_WIDTH, &currentLineWidth);
+			glGetFloatv(GL_SMOOTH_LINE_WIDTH_RANGE, widthRange);
+			temp = currentLineWidth-1;
+			if(temp < widthRange[0])
+				temp = widthRange[0];
+			glLineWidth(temp);
+			printf("Line width is %f (can be between %f and %f)\n", temp, widthRange[0], widthRange[1]);
+			kuhl_errorcheck();
+			break;
+		}
+		case 'x':
+			explode();
+			break;
+		case 'z':
+			update();
+			break;
+		case ' ': // Toggle different sections of the GLSL fragment shader
+			renderStyle++;
+			if(renderStyle > 8)
+				renderStyle = 0;
+			switch(renderStyle)
 			{
-				case 0: printf("Interpolate Euler angles\n"); break;
-				case 1: printf("Interpolate rotation matrices\n"); break;
-				case 2: printf("Interpolate quaternions\n"); break;
-				case 3: printf("Interpolate quaternion (slerp)\n"); break;
+				case 0: printf("Render style: Diffuse (headlamp light)\n"); break;
+				case 1: printf("Render style: Texture\n"); break;
+				case 2: printf("Render style: Vertex color\n"); break;
+				case 3: printf("Render style: Vertex color + diffuse (headlamp light)\n"); break;
+				case 4: printf("Render style: Normals\n"); break;
+				case 5: printf("Render style: Texture coordinates\n"); break;
+				case 6: printf("Render style: Front (green) and back (red) faces based on winding\n"); break;
+				case 7: printf("Render style: Front (green) and back (red) based on normals\n"); break;
+				case 8: printf("Render style: Depth (white=far; black=close)\n"); break;
 			}
 			break;
 	}
@@ -108,58 +240,7 @@ void get_model_matrix(float result[16])
 		mat4f_mult_mat4f_new(result, translate, scale);
 		return;
 	}
-	float rotateAnimate[16];
-	mat4f_identity(rotateAnimate);
-	float percentComplete = (glutGet(GLUT_ELAPSED_TIME)%4000)/4000.0;
-//	printf("percent complete %f\n", percentComplete);
-	
-	float startEuler[3] = { 0, 90, 0 };
-	float endEuler[3] = { 90, 00, 90 };
-	float startMatrix[16], endMatrix[16];
-	mat4f_rotateEuler_new(startMatrix, startEuler[0], startEuler[1], startEuler[2], "XYZ");
-	mat4f_rotateEuler_new(endMatrix, endEuler[0], endEuler[1], endEuler[2], "XYZ");
 
-	if(rotateStyle == 0) // Interpolate eulers
-	{
-
-		float interpolate[3] = { 0,0,0 };
-		vec3f_scalarMult(startEuler, 1-percentComplete);
-		vec3f_scalarMult(endEuler, percentComplete);
-		vec3f_add_new(interpolate, startEuler, endEuler);
-		mat4f_rotateEuler_new(rotateAnimate, interpolate[0], interpolate[1], interpolate[2], "XYZ");
-	}
-	else if(rotateStyle == 1) // Interpolate matrices
-	{
-		for(int i=0; i<16; i++)
-		{
-			rotateAnimate[i] = startMatrix[i] * (1-percentComplete) +
-				endMatrix[i] * percentComplete;
-		}
-	}
-	else if(rotateStyle == 2) // interpolate quaternions - linear
-	{
-		float startQuat[4], endQuat[4];
-		float interpQuat[4];
-		quatf_from_mat4f(startQuat, startMatrix);
-		quatf_from_mat4f(endQuat, endMatrix);
-		for(int i=0; i<4; i++)
-		{
-			interpQuat[i] = startQuat[i]*(1-percentComplete) +
-				endQuat[i] * percentComplete;
-		}
-		quatf_normalize(interpQuat);
-		mat4f_rotateQuatVec_new(rotateAnimate, interpQuat);
-	}
-	else if(rotateStyle == 3) // quaternion slerp
-	{
-		float startQuat[4], endQuat[4];
-		float interpQuat[4];
-		quatf_from_mat4f(startQuat, startMatrix);
-		quatf_from_mat4f(endQuat, endMatrix);
-		quatf_slerp_new(interpQuat, startQuat, endQuat, percentComplete);
-		mat4f_rotateQuatVec_new(rotateAnimate, interpQuat);
-	}
-	
 	/* Get a matrix to scale+translate the model based on the bounding
 	 * box */
 	float fitMatrix[16];
@@ -170,13 +251,14 @@ void get_model_matrix(float result[16])
 	mat4f_translateVec_new(moveToLookPoint, placeToPutModel);
 
 	/* Create a single model matrix. */
-	mat4f_mult_mat4f_new(result, rotateAnimate, fitMatrix);
-	mat4f_mult_mat4f_new(result, moveToLookPoint, result);
+	mat4f_mult_mat4f_new(result, moveToLookPoint, fitMatrix);
 }
 
 void display()
 {
 	dgr_update();
+
+	dgr_setget("style", &renderStyle, sizeof(int));
 
 	// Clear the screen to black, clear the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -229,11 +311,14 @@ void display()
 		                   0, // transpose
 		                   modelview); // value
 
-		glUniform1i(kuhl_get_uniform("renderStyle"), 0);
+		glUniform1i(kuhl_get_uniform("renderStyle"), renderStyle);
 		// Copy far plane value into vertex program so we can render depth buffer.
 		glUniform1f(kuhl_get_uniform("farPlane"), f[5]);
 		
 		kuhl_errorcheck();
+
+		kuhl_limitfps(60);
+		update();
 		kuhl_geometry_draw(modelgeom); /* Draw the model */
 		kuhl_errorcheck();
 
@@ -241,7 +326,7 @@ void display()
 
 	} // finish viewport loop
 
-
+	
 	/* Check for errors. If there are errors, consider adding more
 	 * calls to kuhl_errorcheck() in your code. */
 	kuhl_errorcheck();
@@ -260,6 +345,11 @@ void display()
 	 * window is resized, etc. */
 	glutPostRedisplay();
 }
+
+
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -328,7 +418,7 @@ int main(int argc, char** argv)
 	float initCamLook[3] = {0,0,0}; // a point the camera is facing at
 	float initCamUp[3]   = {0,1,0}; // a vector indicating which direction is up
 	viewmat_init(initCamPos, initCamLook, initCamUp);
-
+	
 	// Clear the screen while things might be loading
 	glClearColor(.2,.2,.2,1);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -336,7 +426,26 @@ int main(int argc, char** argv)
 
 	// Load the model from the file
 	modelgeom = kuhl_load_model(modelFilename, modelTexturePath, program, bbox);
+
+	/* Count the number of kuhl_geometry objects for this model */
+	unsigned int geomCount = kuhl_geometry_count(modelgeom);
 	
+	/* Allocate an array of particle arrays */
+	particles = malloc(sizeof(particle*)*geomCount);
+	int i = 0;
+	for(kuhl_geometry *g = modelgeom; g != NULL; g=g->next)
+	{
+		/* allocate space to store velocity information for all of the
+		 * vertices in this kuhl_geometry */
+		particles[i] = malloc(sizeof(particle)*g->vertex_count);
+		for(unsigned int j=0; j<g->vertex_count; j++)
+			vec3f_set(particles[i][j].velocity, 0,0,0);
+
+		/* Change the geometry to be drawn as points */
+		g->primitive_type = GL_POINTS; // Comment out this line to default to triangle rendering.
+		i++;
+	}
+
 	/* Tell GLUT to start running the main loop and to call display(),
 	 * keyboard(), etc callback methods as needed. */
 	glutMainLoop();

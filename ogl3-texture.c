@@ -9,6 +9,7 @@
 #endif
 
 #include "kuhl-util.h"
+#include "vecmat.h"
 #include "dgr.h"
 #include "projmat.h"
 #include "viewmat.h"
@@ -45,7 +46,7 @@ void display()
 	 * processes/computers synchronized. */
 	dgr_update();
 
-	glClearColor(1,1,1,0); // set clear color to white
+	glClearColor(.2,.2,.2,0); // set clear color to grey
 	// Clear the screen to black, clear the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST); // turn on depth testing
@@ -116,10 +117,12 @@ void display()
 		                   0, // transpose
 		                   modelview); // value
 		kuhl_errorcheck();
-
+		/* Draw the geometry using the matrices that we sent to the
+		 * vertex programs immediately above */
 		kuhl_geometry_draw(&triangle);
 
 	} // finish viewport loop
+
 	/* Check for errors. If there are errors, consider adding more
 	 * calls to kuhl_errorcheck() in your code. */
 	kuhl_errorcheck();
@@ -134,37 +137,27 @@ void display()
 	glutPostRedisplay();
 }
 
-void init_geometryTriangle(GLuint program)
+void init_geometryTriangle(kuhl_geometry *geom, GLuint program)
 {
-	kuhl_geometry_zero(&triangle);
-	triangle.program = program;
-	triangle.primitive_type = GL_TRIANGLES;
-
-	/* The data that we want to draw */
-	GLfloat vertexData[] = {0, 0, 0,
-	                        1, 0, 0,
-	                        1, 1, 0};
-	triangle.vertex_count = 3; // 3 vertices
-	triangle.attrib_pos = vertexData;
-	triangle.attrib_pos_components = 3; // each vertex has X, Y, Z
-	triangle.attrib_pos_name = "in_Position";
+	kuhl_geometry_new(geom, program, 3, GL_TRIANGLES);
 
 	GLfloat texcoordData[] = {0, 0,
 	                          1, 0,
 	                          1, 1 };
-	triangle.attrib_texcoord = texcoordData;
-	triangle.attrib_texcoord_components = 2; // each texcoord has u, v
-	triangle.attrib_texcoord_name = "in_TexCoord";
+	kuhl_geometry_attrib(geom, texcoordData, 2, "in_TexCoord", KG_WARN);
+
+
+/* The data that we want to draw */
+	GLfloat vertexData[] = {0, 0, 0,
+	                        1, 0, 0,
+	                        1, 1, 0};
+	kuhl_geometry_attrib(geom, vertexData, 3, "in_Position", KG_WARN);
 
 
 	/* Load the texture. It will be bound to texName */
-	GLuint texName = 0;
-	kuhl_read_texture_file("images/blue.png", &texName);
-
-	/* Tell our kuhl_geometry object about the texture */
-	triangle.texture = texName;
-	triangle.texture_name = "tex"; // name in GLSL fragment program
-	kuhl_geometry_init(&triangle);
+	GLuint texId = 0;
+	kuhl_read_texture_file("images/rainbow.png", &texId);
+	kuhl_geometry_texture(geom, texId, "tex", KG_WARN);
 
 	kuhl_errorcheck();
 }
@@ -211,7 +204,7 @@ int main(int argc, char** argv)
 	glUseProgram(program);
 	kuhl_errorcheck();
 
-	init_geometryTriangle(program);
+	init_geometryTriangle(&triangle, program);
 	
 	/* Good practice: Unbind objects until we really need them. */
 	glUseProgram(0);

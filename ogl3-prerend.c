@@ -9,6 +9,7 @@
 #endif
 
 #include "kuhl-util.h"
+#include "vecmat.h"
 #include "dgr.h"
 #include "projmat.h"
 #include "viewmat.h"
@@ -50,7 +51,7 @@ void display()
 	 * processes/computers synchronized. */
 	dgr_update();
 
-	glClearColor(1,1,1,0); // set clear color to white
+	glClearColor(.2,.2,.2,0); // set clear color to grey
 	// Clear the screen to black, clear the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST); // turn on depth testing
@@ -121,8 +122,10 @@ void display()
 			prerenderFrameBuffer = kuhl_gen_framebuffer(viewport[2], viewport[3],
 			                                            &prerenderTexID,
 			                                            NULL);
+			/* Apply the texture to our geometry and draw the quad. */
+			kuhl_geometry_texture(&prerendQuad, prerenderTexID, "tex", 1);
 		}
-		/* Switch to framebuffer and set the OpenGL viewport to cover
+		/* Switch to framebuffer and set the OpenGL viewport to coverprerenderTexID
 		 * the entire framebuffer. */
 		glBindFramebuffer(GL_FRAMEBUFFER, prerenderFrameBuffer);
 		glViewport(0,0,viewport[2], viewport[3]);
@@ -142,9 +145,8 @@ void display()
 
 		/* Set up the viewport to draw on the screen */
 		glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-		/* Apply the texture to our geometry and draw the quad. */
-		prerendQuad.texture = prerenderTexID;
-		prerendQuad.texture_name = "tex";
+
+
 		kuhl_geometry_draw(&prerendQuad);
 		
 	} // finish viewport loop
@@ -163,80 +165,72 @@ void display()
 	glutPostRedisplay();
 }
 
-void init_geometryTriangle(GLuint program)
+void init_geometryTriangle(kuhl_geometry *geom, GLuint program)
 {
-	kuhl_geometry_zero(&triangle);
-	triangle.program = program;
-	triangle.primitive_type = GL_TRIANGLES;
+	kuhl_geometry_new(geom, program, 3, // num vertices
+	                  GL_TRIANGLES); // primitive type
 
 	/* The data that we want to draw */
-	GLfloat vertexData[] = {0, 0, 0,
-	                        1, 0, 0,
-	                        1, 1, 0};
-	triangle.vertex_count = 3; // 3 vertices
-	triangle.attrib_pos = vertexData;
-	triangle.attrib_pos_components = 3; // each vertex has X, Y, Z
-	triangle.attrib_pos_name = "in_Position";
+	GLfloat vertexPositions[] = {0, 0, 0,
+	                             1, 0, 0,
+	                             1, 1, 0};
+	kuhl_geometry_attrib(geom, vertexPositions, // data
+	                     3, // number of components (x,y,z)
+	                     "in_Position", // GLSL variable
+	                     KG_WARN); // warn if attribute is missing in GLSL program?
 
-	kuhl_geometry_init(&triangle);
 }
 
 
 /* This illustrates how to draw a quad by drawing two triangles and reusing vertices. */
-void init_geometryQuad(GLuint program)
+void init_geometryQuad(kuhl_geometry *geom, GLuint program)
 {
-	kuhl_geometry_zero(&quad);
-	quad.program = program;
-	quad.primitive_type = GL_TRIANGLES;
-
+	kuhl_geometry_new(geom, program,
+	                  4, // number of vertices
+	                  GL_TRIANGLES); // type of thing to draw
 
 	/* The data that we want to draw */
-	GLfloat vertexData[] = {0+1.1, 0, 0,
-	                        1+1.1, 0, 0,
-	                        1+1.1, 1, 0,
-	                        0+1.1, 1, 0 };
-	quad.attrib_pos = vertexData;
-	quad.vertex_count = 4;  // 4 vertices
-	quad.attrib_pos_components = 3; // each vertex has X, Y, Z
-	quad.attrib_pos_name = "in_Position";
+	GLfloat vertexPositions[] = {0+1.1, 0, 0,
+	                       1+1.1, 0, 0,
+	                       1+1.1, 1, 0,
+	                       0+1.1, 1, 0 };
+	kuhl_geometry_attrib(geom, vertexPositions,
+	                     3, // number of components x,y,z
+	                     "in_Position", // GLSL variable
+	                     KG_WARN); // warn if attribute is missing in GLSL program?
 
 	GLuint indexData[] = { 0, 1, 2,  // first triangle is index 0, 1, and 2 in the list of vertices
 	                       0, 2, 3 }; // indices of second triangle.
-	quad.indices = indexData;
-	quad.indices_len = 6;
-	kuhl_geometry_init(&quad);
+	kuhl_geometry_indices(geom, indexData, 6);
+
+	kuhl_errorcheck();
 }
 
 /* This illustrates how to draw a quad by drawing two triangles and reusing vertices. */
-void init_geometryQuadPrerender(GLuint program)
+void init_geometryQuadPrerender(kuhl_geometry *geom, GLuint program)
 {
-	kuhl_geometry_zero(&prerendQuad);
-	prerendQuad.program = program;
-	prerendQuad.primitive_type = GL_TRIANGLES;
+	kuhl_geometry_new(geom, program, 4, GL_TRIANGLES);
+
 
 	/* The data that we want to draw */
-	GLfloat vertexData[] = {-1, -1, 0,
+	GLfloat vertexPositions[] = {-1, -1, 0,
 	                        1, -1, 0,
 	                        1, 1, 0,
 	                        -1, 1, 0 };
-	prerendQuad.vertex_count = 4;  // 4 vertices
-	prerendQuad.attrib_pos = vertexData;
-	prerendQuad.attrib_pos_components = 3; // each vertex has X, Y, Z
-	prerendQuad.attrib_pos_name = "in_Position";
+	kuhl_geometry_attrib(geom, vertexPositions,
+	                     3, // number of components x,y,z
+	                     "in_Position", // GLSL variable
+	                     KG_WARN); // warn if attribute is missing in GLSL program?
+
+	GLuint indexData[] = { 0, 1, 2,  // first triangle is index 0, 1, and 2 in the list of vertices
+	                       0, 2, 3 }; // indices of second triangle.
+	kuhl_geometry_indices(geom, indexData, 6);
 
 	GLfloat texcoordData[] = {0, 0,
 	                          1, 0,
 	                          1, 1,
 	                          0, 1};
-	prerendQuad.attrib_texcoord = texcoordData;
-	prerendQuad.attrib_texcoord_components = 2;
-	prerendQuad.attrib_texcoord_name = "in_TexCoord";
-
-	GLuint indexData[] = { 0, 1, 2,  // first triangle is index 0, 1, and 2 in the list of vertices
-	                       0, 2, 3 }; // indices of second triangle.
-	prerendQuad.indices = indexData;
-	prerendQuad.indices_len = 6;
-	kuhl_geometry_init(&prerendQuad);
+	kuhl_geometry_attrib(geom, texcoordData, 2, "in_TexCoord", KG_WARN);
 }
 
 
@@ -289,19 +283,11 @@ int main(int argc, char** argv)
 
 	/* Create kuhl_geometry structs for the objects that we want to
 	 * draw. */
-	init_geometryTriangle(program);
-	init_geometryQuad(program);
+	init_geometryTriangle(&triangle, program);
+	init_geometryQuad(&quad, program);
 
 	prerendProgram = kuhl_create_program("ogl3-prerend.vert", "ogl3-prerend.frag");
-	init_geometryQuadPrerender(prerendProgram);	
-	glActiveTexture(GL_TEXTURE0);
-	glGenTextures(1, &prerenderTexID);
-	glBindTexture(GL_TEXTURE_2D, prerenderTexID);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
+	init_geometryQuadPrerender(&prerendQuad, prerendProgram);	
 
 	dgr_init();     /* Initialize DGR based on environment variables. */
 	projmat_init(); /* Figure out which projection matrix we should use based on environment variables */

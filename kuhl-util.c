@@ -38,260 +38,12 @@
 #endif
 
 #include "kuhl-util.h"
+#include "vecmat.h"
 #ifdef KUHL_UTIL_USE_IMAGEMAGICK
 #include "imageio.h"
 #endif
 
 
-
-#define EPSILON 0.0001
-
-extern inline void vec3f_set(float  v[3], float  a, float  b, float  c);
-extern inline void vec3d_set(double v[3], double a, double b, double c);
-extern inline void vec4f_set(float  v[4], float  a, float  b, float  c, float  d);
-extern inline void vec4d_set(double v[4], double a, double b, double c, double d);
-
-/* Copy a vector into another */
-extern inline void vecNf_copy(float  result[ ], const float  a[ ], const int n);
-extern inline void vecNd_copy(double result[ ], const double a[ ], const int n);
-extern inline void vec3f_copy(float  result[3], const float  a[3]);
-extern inline void vec3d_copy(double result[3], const double a[3]);
-extern inline void vec4f_copy(float  result[4], const float  a[4]);
-extern inline void vec4d_copy(double result[4], const double a[4]);
-
-/* Cross product of two vectors. Works even if result points to the same
- * location in memory as the A or B vectors. This allow you to
- * calculate A=A cross B by calling vec3f(A,A,B) */
-extern inline void vec3f_cross_new(float  result[3], const float  A[3], const float  B[3]);
-extern inline void vec3d_cross_new(double result[3], const double A[3], const double B[3]);
-
-/* Vector dot products */
-extern inline float  vecNf_dot(const float  A[ ], const float  B[ ], const int n);
-extern inline double vecNd_dot(const double A[ ], const double B[ ], const int n);
-extern inline float  vec3f_dot(const float  A[3], const float  B[3]);
-extern inline double vec3d_dot(const double A[3], const double B[3]);
-extern inline float  vec4f_dot(const float  A[4], const float  B[4]);
-extern inline double vec4d_dot(const double A[4], const double B[4]);
-
-/* Calculate the norm squared (i.e., length squared) of a vector. This
- * is different than normalizing a vector. */
-extern inline float  vec3f_normSq(const float  A[3]);
-extern inline double vec3d_normSq(const double A[3]);
-extern inline float  vec4f_normSq(const float  A[4]);
-extern inline double vec4d_normSq(const double A[4]);
-
-/* Calculate the norm (i.e., length) of a vector. This is different
- * than normalizing a vector! */
-extern inline float  vec3f_norm(const float  A[3]);
-extern inline double vec3d_norm(const double A[3]);
-extern inline float  vec4f_norm(const float  A[4]);
-extern inline double vec4d_norm(const double A[4]);
-
-/* Divide every element in vector with the scalar value: result = vector / scalar */
-extern inline void vecNf_scalarDiv_new(float  result[ ], const float  v[ ], const float  scalar, const int n);
-extern inline void vecNd_scalarDiv_new(double result[ ], const double v[ ], const double scalar, const int n);
-extern inline void vec3f_scalarDiv_new(float  result[3], const float  v[3], const float  scalar);
-extern inline void vec3d_scalarDiv_new(double result[3], const double v[3], const double scalar);
-extern inline void vec4f_scalarDiv_new(float  result[4], const float  v[4], const float  scalar);
-extern inline void vec4d_scalarDiv_new(double result[4], const double v[4], const double scalar);
-/* In-place scalar division */
-extern inline void vecNf_scalarDiv(float  v[ ], const float  scalar, const int n);
-extern inline void vecNd_scalarDiv(double v[ ], const double scalar, const int n);
-extern inline void vec3f_scalarDiv(float  v[3], const float  scalar);
-extern inline void vec3d_scalarDiv(double v[3], const double scalar);
-extern inline void vec4f_scalarDiv(float  v[4], const float  scalar);
-extern inline void vec4d_scalarDiv(double v[4], const double scalar);
-
-
-/* Multiply each element in the vector by a scalar (result = v *
- * scalar) . Works even if the result vector points to the same
- * location in memory as the input vector. */
-extern inline void vecNf_scalarMult_new(float  result[ ], const float  v[ ], const float  scalar, const int n);
-extern inline void vecNd_scalarMult_new(double result[ ], const double v[ ], const double scalar, const int n);
-extern inline void vec3f_scalarMult_new(float  result[3], const float  v[3], const float  scalar);
-extern inline void vec3d_scalarMult_new(double result[3], const double v[3], const double scalar);
-extern inline void vec4f_scalarMult_new(float  result[4], const float  v[4], const float  scalar);
-extern inline void vec4d_scalarMult_new(double result[4], const double v[4], const double scalar);
-/* In-place scalar multiplication */
-extern inline void vecNf_scalarMult(float  v[ ], const float  scalar, const int n);
-extern inline void vecNd_scalarMult(double v[ ], const double scalar, const int n);
-extern inline void vec3f_scalarMult(float  v[3], const float  scalar);
-extern inline void vec3d_scalarMult(double v[3], const double scalar);
-extern inline void vec4f_scalarMult(float  v[4], const float  scalar);
-extern inline void vec4d_scalarMult(double v[4], const double scalar);
-
-
-/* Normalize the vector so that it is a unit vector. */
-extern inline void vec3f_normalize_new(float  dest[3], const float  src[3]);
-extern inline void vec3d_normalize_new(double dest[3], const double src[3]);
-extern inline void vec4f_normalize_new(float  dest[4], const float  src[4]);
-extern inline void vec4d_normalize_new(double dest[4], const double src[4]);
-/* Normalize a vector in place. */
-extern inline void vec3f_normalize(float  v[3]);
-extern inline void vec3d_normalize(double v[3]);
-extern inline void vec4f_normalize(float  v[4]);
-extern inline void vec4d_normalize(double v[4]);
-
-/* Homogenize a 4-element vector, store result at a new location */
-extern inline void vec4f_homogenize_new(float  dest[4], const float  src[4]);
-extern inline void vec4d_homogenize_new(double dest[4], const double src[4]);
-/* Homogenize a 4-element vector in place */
-extern inline void vec4f_homogenize(float  v[4]);
-extern inline void vec4d_homogenize(double v[4]);
-
-/* Add two vectors together. Store result in a new location: result = vectorA + vectorB */
-extern inline void vecNf_add_new(float  result[ ], const float  a[ ], const float  b[ ], const int n);
-extern inline void vecNd_add_new(double result[ ], const double a[ ], const double b[ ], const int n);
-extern inline void vec3f_add_new(float  result[3], const float  a[3], const float  b[3]);
-extern inline void vec3d_add_new(double result[3], const double a[3], const double b[3]);
-extern inline void vec4f_add_new(float  result[4], const float  a[4], const float  b[4]);
-extern inline void vec4d_add_new(double result[4], const double a[4], const double b[4]);
-
-/* Add two vectors together. Store the resulting sum in the first parameter: a = a+b */
-extern inline void vecNf_add(float  a[ ], const float  b[ ], const int n);
-extern inline void vecNd_add(double a[ ], const double b[ ], const int n);
-extern inline void vec3f_add(float  a[3], const float  b[3]);
-extern inline void vec3d_add(double a[3], const double b[3]);
-extern inline void vec4f_add(float  a[4], const float  b[4]);
-extern inline void vec4d_add(double a[4], const double b[4]);
-
-/* Subtract two vectors from each other. Store the result of the calculation in a new location:
-   result = vectorA - vectorB
-
-   IMPORTANT: There are no vecNf_sub() methods that do this calculation in place because it isn't clear if it should implement: a=a-b or a=b-a. However, you can call vec3f_sub_new(a,a,b) to calculate a=a-b.
-*/
-extern inline void vecNf_sub_new(float  result[ ], const float  a[ ], const float  b[ ], const int n);
-extern inline void vecNd_sub_new(double result[ ], const double a[ ], const double b[ ], const int n);
-extern inline void vec3f_sub_new(float  result[3], const float  a[3], const float  b[3]);
-extern inline void vec3d_sub_new(double result[3], const double a[3], const double b[3]);
-extern inline void vec4f_sub_new(float  result[4], const float  a[4], const float  b[4]);
-extern inline void vec4d_sub_new(double result[4], const double a[4], const double b[4]);
-
-/* Print the vector to standard out. */
-extern inline void vecNf_print(const float  v[ ], const int n);
-extern inline void vecNd_print(const double v[ ], const int n);
-extern inline void vec3f_print(const float  v[3]);
-extern inline void vec3d_print(const double v[3]);
-extern inline void vec4f_print(const float  v[4]);
-extern inline void vec4d_print(const double v[4]);
-
-/* Given a row and column, get the index for that entry in the
- * matrix. These functions don't depend on if the matrix is composed
- * of doubles or floats, but the extra functions such as
- * mat3f_getIndex() are provided for convenience and consistency with
- * the rest of the functions. */
-extern inline int matN_getIndex(const int row, const int col, const int n);
-extern inline int mat3_getIndex(const int row, const int col);
-extern inline int mat4_getIndex(const int row, const int col);
-extern inline int mat3f_getIndex(const int row, const int col);
-extern inline int mat4d_getIndex(const int row, const int col);
-extern inline int mat3f_getIndex(const int row, const int col);
-extern inline int mat4d_getIndex(const int row, const int col);
-
-/* Get a row or column from a matrix. First row/column is 0! */
-extern inline void matNf_getColumn(float  result[ ], const float  m[  ], const int col, const int n);
-extern inline void matNd_getColumn(double result[ ], const double m[  ], const int col, const int n);
-extern inline void mat3f_getColumn(float  result[3], const float  m[ 9], const int col);
-extern inline void mat3d_getColumn(double result[3], const double m[ 9], const int col);
-extern inline void mat4f_getColumn(float  result[4], const float  m[16], const int col);
-extern inline void mat4d_getColumn(double result[4], const double m[16], const int col);
-extern inline void matNf_getRow(float  result[ ], const float  m[  ], const int row, const int n);
-extern inline void matNd_getRow(double result[ ], const double m[  ], const int row, const int n);
-extern inline void mat3f_getRow(float  result[3], const float  m[ 9], const int row);
-extern inline void mat3d_getRow(double result[3], const double m[ 9], const int row);
-extern inline void mat4f_getRow(float  result[4], const float  m[16], const int row);
-extern inline void mat4d_getRow(double result[4], const double m[16], const int row);
-
-/* Set the specific column or row in matrix to the values stored in
- * vector v. The first row/column is 0. The size of the matrix must
- * match the size of the vector for these to work correctly (i.e., if
- * you want to set a row or column of a 4x4 matrix, you must use
- * mat4[fd]_set[Row|Column]() and pass in a vector with 4 elements. */
-extern inline void matNf_setColumn(float  matrix[  ], const float  v[ ], const int col, const int n);
-extern inline void matNd_setColumn(double matrix[  ], const double v[ ], const int col, const int n);
-extern inline void mat3f_setColumn(float  matrix[ 9], const float  v[3], const int col);
-extern inline void mat3d_setColumn(double matrix[ 9], const double v[3], const int col);
-extern inline void mat4f_setColumn(float  matrix[16], const float  v[4], const int col);
-extern inline void mat4d_setColumn(double matrix[16], const double v[4], const int col);
-extern inline void matNf_setRow(float  matrix[  ], const float  m[ ], const int row, const int n);
-extern inline void matNd_setRow(double matrix[  ], const double m[ ], const int row, const int n);
-extern inline void mat3f_setRow(float  matrix[ 9], const float  m[3], const int row);
-extern inline void mat3d_setRow(double matrix[ 9], const double m[3], const int row);
-extern inline void mat4f_setRow(float  matrix[16], const float  m[4], const int row);
-extern inline void mat4d_setRow(double matrix[16], const double m[4], const int row);
-
-
-
-
-/* Copy a matrix */
-extern inline void matNf_copy(float  dest[], const float  src[], const int n);
-extern inline void matNd_copy(double dest[], const double src[], const int n);
-extern inline void mat3f_copy(float  dest[ 9], const float  src[ 9]);
-extern inline void mat3d_copy(double dest[ 9], const double src[ 9]);
-extern inline void mat4f_copy(float  dest[16], const float  src[16]);
-extern inline void mat4d_copy(double dest[16], const double src[16]);
-
-/* result = matrix * vector; Works even if result and vector point to the same place. */
-extern inline void matNf_mult_vecNf_new(float  result[ ], const float  m[  ], const float  v[ ], const int n);
-extern inline void matNd_mult_vecNd_new(double result[ ], const double m[  ], const double v[ ], const int n);
-extern inline void mat3f_mult_vec3f_new(float  result[3], const float  m[ 9], const float  v[3]);
-extern inline void mat3d_mult_vec3d_new(double result[3], const double m[ 9], const double v[3]);
-extern inline void mat4f_mult_vec4f_new(float  result[4], const float  m[16], const float  v[4]);
-extern inline void mat4d_mult_vec4d_new(double result[4], const double m[16], const double v[4]);
-/* vector = matrix * vector */
-extern inline void matNf_mult_vecNf(float vector[], const float matrix[], const int n);
-extern inline void matNd_mult_vecNd(double vector[], const double matrix[], const int n);
-extern inline void mat3f_mult_vec3f(float vector[3], const float matrix[9]);
-extern inline void mat3d_mult_vec3d(double vector[3], const double matrix[9]);
-extern inline void mat4f_mult_vec4f(float vector[4], const float matrix[16]);
-extern inline void mat4d_mult_vec4d(double vector[4], const double matrix[16]);
-
-/* result = matrixA * matrixB; Works even if result and matrixA (or matrixB) point to the same place */
-extern inline void matNf_mult_matNf_new(float  result[ ], const float  matA[  ], const float  matB[  ], const int n);
-extern inline void matNd_mult_matNd_new(double result[ ], const double matA[  ], const double matB[  ], const int n);
-extern inline void mat3f_mult_mat3f_new(float  result[3], const float  matA[ 9], const float  matB[ 9]);
-extern inline void mat3d_mult_mat3d_new(double result[3], const double matA[ 9], const double matB[ 9]);
-extern inline void mat4f_mult_mat4f_new(float  result[4], const float  matA[16], const float  matB[16]);
-extern inline void mat4d_mult_mat4d_new(double result[4], const double matA[16], const double matB[16]);
-
-/* Transpose a matrix in place. */
-extern inline void matNf_transpose(float  m[  ], const int n);
-extern inline void matNd_transpose(double m[  ], const int n);
-extern inline void mat3f_transpose(float  m[ 9]);
-extern inline void mat3d_transpose(double m[ 9]);
-extern inline void mat4f_transpose(float  m[16]);
-extern inline void mat4d_transpose(double m[16]);
-
-/* Transpose a matrix and store the result at a different location. */
-extern inline void matNf_transpose_new(float  dest[  ], const float  src[  ], const int n);
-extern inline void matNd_transpose_new(double dest[  ], const double src[  ], const int n);
-extern inline void mat3f_transpose_new(float  dest[ 9], const float  src[ 9]);
-extern inline void mat3d_transpose_new(double dest[ 9], const double src[ 9]);
-extern inline void mat4f_transpose_new(float  dest[16], const float  src[16]);
-extern inline void mat4d_transpose_new(double dest[16], const double src[16]);
-
-
-/* Set matrix to identity */
-extern inline void matNf_identity(float  m[  ], const int n);
-extern inline void matNd_identity(double m[  ], const int n);
-extern inline void mat3f_identity(float  m[ 9]);
-extern inline void mat3d_identity(double m[ 9]);
-extern inline void mat4f_identity(float  m[16]);
-extern inline void mat4d_identity(double m[16]);
-
-/* Print matrix */
-extern inline void matNf_print(const float  m[  ], const int n);
-extern inline void matNd_print(const double m[  ], const int n);
-extern inline void mat3f_print(const float  m[ 9]);
-extern inline void mat3d_print(const double m[ 9]);
-extern inline void mat4f_print(const float  m[16]);
-extern inline void mat4d_print(const double m[16]);
-
-/* Convert between 3x3 and 4x4 matrices */
-extern inline void mat3d_from_mat3f(double dest[ 9], const float  src[ 9]);
-extern inline void mat4d_from_mat4f(double dest[16], const float  src[16]);
-extern inline void mat3f_from_mat3d(float  dest[ 9], const double src[ 9]);
-extern inline void mat4f_from_mat4d(float  dest[16], const double src[16]);
 #ifdef KUHL_UTIL_USE_ASSIMP
 /** Create a 4x4 float matrix from an ASSIMP 4x4 matrix structure.
     @param dest The location to store new matrix.
@@ -320,1647 +72,99 @@ int kuhl_errorcheckFileLine(const char *file, int line)
 	return 0;
 }
 
-/** Inverts a 4x4 float matrix.
- *
- * This works regardless of if we are treating the data as row major
- * or column major order because: (A^T)^-1 == (A^-1)^T
- *
- * @param out Location to store the inverted matrix.
- * @param m The matrix to invert.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the output matrix is left unchanged.
- */
-int mat4f_invert_new(float out[16], const float m[16])
+/** Don't call this function, call kuhl_malloc() instead. */
+void *kuhl_mallocFileLine(size_t size, const char *file, int line)
 {
-	float inv[16], det;
-	inv[0] =   m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
-	inv[4] =  -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
-	inv[8] =   m[4]*m[9]*m[15]  - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
-	inv[12]=  -m[4]*m[9]*m[14]  + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
-	inv[1] =  -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
-	inv[5] =   m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
-	inv[9] =  -m[0]*m[9]*m[15]  + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
-	inv[13] =  m[0]*m[9]*m[14]  - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
-	inv[2] =   m[1]*m[6]*m[15]  - m[1]*m[7]*m[14]  - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7]  - m[13]*m[3]*m[6];
-	inv[6] =  -m[0]*m[6]*m[15]  + m[0]*m[7]*m[14]  + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7]  + m[12]*m[3]*m[6];
-	inv[10] =  m[0]*m[5]*m[15]  - m[0]*m[7]*m[13]  - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7]  - m[12]*m[3]*m[5];
-	inv[14] = -m[0]*m[5]*m[14]  + m[0]*m[6]*m[13]  + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6]  + m[12]*m[2]*m[5];
-	inv[3] =  -m[1]*m[6]*m[11]  + m[1]*m[7]*m[10]  + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7]   + m[9]*m[3]*m[6];
-	inv[7] =   m[0]*m[6]*m[11]  - m[0]*m[7]*m[10]  - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7]   - m[8]*m[3]*m[6];
-	inv[11] = -m[0]*m[5]*m[11]  + m[0]*m[7]*m[9]   + m[4]*m[1]*m[11] - m[4]*m[3]*m[9]  - m[8]*m[1]*m[7]   + m[8]*m[3]*m[5];
-	inv[15] =  m[0]*m[5]*m[10]  - m[0]*m[6]*m[9]   - m[4]*m[1]*m[10] + m[4]*m[2]*m[9]  + m[8]*m[1]*m[6]   - m[8]*m[2]*m[5];
-	det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
-	if (det == 0)
-	{
-		printf("%s: Failed to invert the following matrix:\n", __func__);
-		mat4f_print(m);
+	if(size == 0)
+		fprintf(stderr, "!!!!! malloc Warning !!!!! - Size 0 passed to malloc at %s:%d\n", file, line);
+	void *ret = malloc(size);
+	if(ret == NULL)
+		fprintf(stderr, "!!!!! malloc Error !!!!! - Failed to allocate %zu bytes at %s:%d\n", size, file, line);
+	return ret;
+}
+
+/** Checks if a file is readable or not.
+
+ @param filename The file to check
+ @return Returns 1 if we can read the file, 0 otherwise.
+*/
+int kuhl_can_read_file(const char *filename)
+{
+	FILE *f = fopen(filename, "r");
+	if(f == NULL)
 		return 0;
-	}
-
-	det = 1.0 / det;
-
-	for(int i = 0; i < 16; i++)
-		out[i] = inv[i] * det;
-
-	return 1;
-}
-
-/** Inverts a 4x4 double matrix.
- *
- * This works regardless of if we are treating the data as row major
- * or column major order because: (A^T)^-1 == (A^-1)^T
- *
- * @param out Location to store the inverted matrix.
- * @param m The matrix to invert.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the output matrix is left unchanged.
- */
-int mat4d_invert_new(double out[16], const double m[16])
-{
-	double inv[16], det;
-	inv[0] =   m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
-	inv[4] =  -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
-	inv[8] =   m[4]*m[9]*m[15]  - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
-	inv[12]=  -m[4]*m[9]*m[14]  + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
-	inv[1] =  -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
-	inv[5] =   m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
-	inv[9] =  -m[0]*m[9]*m[15]  + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
-	inv[13] =  m[0]*m[9]*m[14]  - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
-	inv[2] =   m[1]*m[6]*m[15]  - m[1]*m[7]*m[14]  - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7]  - m[13]*m[3]*m[6];
-	inv[6] =  -m[0]*m[6]*m[15]  + m[0]*m[7]*m[14]  + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7]  + m[12]*m[3]*m[6];
-	inv[10] =  m[0]*m[5]*m[15]  - m[0]*m[7]*m[13]  - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7]  - m[12]*m[3]*m[5];
-	inv[14] = -m[0]*m[5]*m[14]  + m[0]*m[6]*m[13]  + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6]  + m[12]*m[2]*m[5];
-	inv[3] =  -m[1]*m[6]*m[11]  + m[1]*m[7]*m[10]  + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7]   + m[9]*m[3]*m[6];
-	inv[7] =   m[0]*m[6]*m[11]  - m[0]*m[7]*m[10]  - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7]   - m[8]*m[3]*m[6];
-	inv[11] = -m[0]*m[5]*m[11]  + m[0]*m[7]*m[9]   + m[4]*m[1]*m[11] - m[4]*m[3]*m[9]  - m[8]*m[1]*m[7]   + m[8]*m[3]*m[5];
-	inv[15] =  m[0]*m[5]*m[10]  - m[0]*m[6]*m[9]   - m[4]*m[1]*m[10] + m[4]*m[2]*m[9]  + m[8]*m[1]*m[6]   - m[8]*m[2]*m[5];
-	det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
-	if (det == 0)
-	{
-		printf("%s: Failed to invert the following matrix:\n", __func__);
-		mat4d_print(m);
-		return 0;
-	}
-
-	det = 1.0 / det;
-
-	for(int i = 0; i < 16; i++)
-		out[i] = inv[i] * det;
-
-	return 1;
-}
-
-/** Inverts a 3x3 float matrix.
- *
- * This works regardless of if we are treating the data as row major
- * or column major order because: (A^T)^-1 == (A^-1)^T
- *
- * @param out Location to store the inverted matrix.
- * @param m The matrix to invert.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the output matrix is left unchanged.
- */
-int mat3f_invert_new(float out[9], const float m[9])
-{
-	float inv[9];
-	inv[0] = m[4] * m[8] - m[5] * m[7];
-	inv[3] = m[6] * m[5] - m[3] * m[8];
-	inv[6] = m[3] * m[7] - m[6] * m[4];
-	inv[1] = m[7] * m[2] - m[1] * m[8];
-	inv[4] = m[0] * m[8] - m[6] * m[2];
-	inv[7] = m[1] * m[6] - m[0] * m[7];
-	inv[2] = m[1] * m[5] - m[2] * m[4];
-	inv[5] = m[2] * m[3] - m[0] * m[5];
-	inv[8] = m[0] * m[4] - m[1] * m[3];
-	float det = m[0] * (m[4] * m[8] - m[5] * m[7]) -
-	            m[3] * (m[1] * m[8] - m[7] * m[2]) +
-	            m[6] * (m[1] * m[5] - m[4] * m[2]);
-	if (det == 0)
-	{
-		printf("%s: Failed to invert the following matrix:\n", __func__);
-		mat3f_print(m);
-		return 0;
-	}
-
-	det = 1.0/det;
-
-	for(int i = 0; i < 9; i++)
-		out[i] = inv[i] * det;
-
-	return 1;
-}
-
-/** Inverts a 3x3 double matrix.
- *
- * This works regardless of if we are treating the data as row major
- * or column major order because: (A^T)^-1 == (A^-1)^T
- *
- * @param out Location to store the inverted matrix.
- * @param m The matrix to invert.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the output matrix is left unchanged.
- */
-int mat3d_invert_new(double out[9], const double m[9])
-{
-	float inv[9];
-	inv[0] = m[4] * m[8] - m[5] * m[7];
-	inv[3] = m[6] * m[5] - m[3] * m[8];
-	inv[6] = m[3] * m[7] - m[6] * m[4];
-	inv[1] = m[7] * m[2] - m[1] * m[8];
-	inv[4] = m[0] * m[8] - m[6] * m[2];
-	inv[7] = m[1] * m[6] - m[0] * m[7];
-	inv[2] = m[1] * m[5] - m[2] * m[4];
-	inv[5] = m[2] * m[3] - m[0] * m[5];
-	inv[8] = m[0] * m[4] - m[1] * m[3];
-	float det = m[0] * (m[4] * m[8] - m[5] * m[7]) -
-	            m[3] * (m[1] * m[8] - m[7] * m[2]) +
-	            m[6] * (m[1] * m[5] - m[4] * m[2]);
-	if (det == 0)
-	{
-		printf("%s: Failed to invert the following matrix:\n", __func__);
-		mat3d_print(m);
-		return 0;
-	}
-
-	det = 1.0/det;
-
-	for(int i = 0; i < 9; i++)
-		out[i] = inv[i] * det;
-
-	return 1;
-}
-/** Inverts a 4x4 float matrix in place.
- * @param matrix The matrix to be inverted in place.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the matrix is left unchanged.
- */
-int mat4f_invert(float  matrix[16])
-{ return mat4f_invert_new(matrix, matrix); }
-/** Inverts a 4x4 double matrix in place.
- * @param matrix The matrix to be inverted in place.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the matrix is left unchanged.
- */
-int mat4d_invert(double matrix[16])
-{ return mat4d_invert_new(matrix, matrix); }
-/** Inverts a 3x3 float matrix in place.
- * @param matrix The matrix to be inverted in place.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the matrix is left unchanged.
- */
-int mat3f_invert(float  matrix[ 9])
-{ return mat3f_invert_new(matrix, matrix); }
-/** Inverts a 3x3 double matrix in place.
- * @param matrix The matrix to be inverted in place.
- * @return Returns 1 if the matrix was inverted. Returns 0 if an error occurred. When an error occurs, a message is also printed out to standard out and the matrix is left unchanged.
- */
-int mat3d_invert(double matrix[ 9])
-{ return mat3d_invert_new(matrix, matrix); }
-
-
-/** Creates a 3x3 rotation matrix of floats from Euler angles.
-
-If order="XYZ", we will create a rotation matrix which rotates a point
-around X, Y and then Z using intrinsic rotations. This results in a
-single matrix that is comprised of three rotation matrices:
-RotZ*RotY*RotX. If you prefer to think in extrinsic rotations, using
-order="XYZ" is equivalent to rotating around Z, Y, and then X.
-
-This implementation matches what Wolfram Alpha does except that the
-signs on all of the angles need to be negated.  For example, see the
-matrices for right-handed systems on Wikipedia and note that Wolfram
-alpha has all of the sin()s negated---making it use a left-handed
-system.
-
-If you want to rotate a camera in OpenGL, you may wish to invert this
-matrix (if R = RxRyRz, then R^-1 = Rz^-1 Ry^-1 Rx^-1). Otherwise, this
-matrix can be applied to rotate vertices in an object.
-
-Intended to work with:
-XYZ XZY YXZ YZX ZXY ZYX (Tait-Bryan angles)
-XYX XZX YXY YZY ZXZ ZYZ (Euler angles)
-
-@param result The location to store the rotation matrix calculated from the Euler angles.
-@param a1_degrees The amount of rotation around the first axis in degrees (-180 to 180).
-
-@param a2_degrees The amount of rotation around the second axis in
-degrees. If first and last rotation axes are different (Tait-Bryan
-angles), must be between -90 to 90. If the first and last rotation
-axes are the same (traditional Euler angles), must be between 0 and
-180. When this parameter is near the limits, gimbal lock occurs.
-
-@param a3_degrees The amount of rotation around the third axis in
-degrees (-180 to 180).
-
-@param order A string representing the order that the rotations should
-be applied. In graphics, typically "XYZ".
-*/
-void mat3f_rotateEuler_new(float result[9], float a1_degrees, float a2_degrees, float a3_degrees, const char order[3])
-{
-	// Convert from degrees to radians
-	float angles[3] = { a1_degrees, a2_degrees, a3_degrees };
-	mat3f_identity(result);
-	float rot[9];
-	for(int i=0; i<3; i++)
-	{
-		if(order[i] == 'X' || order[i] == '1')
-			mat3f_rotateAxis_new(rot, angles[i], 1, 0, 0);
-		else if(order[i] == 'Y' || order[i] == '2')
-			mat3f_rotateAxis_new(rot, angles[i], 0, 1, 0);
-		else if(order[i] == 'Z' || order[i] == '3')
-			mat3f_rotateAxis_new(rot, angles[i], 0, 0, 1);
-		else
-			printf("%s: Unknown axis: %c\n", __func__, order[i]);
-		mat3f_mult_mat3f_new(result, rot, result);
-	}
-}
-
-/** Creates a 3x3 rotation matrix of doubles from intrinsic Euler
-    angles. For full documentation, see mat3f_rotateEuler_new().
-
-    @see mat3f_rotateEuler_new()
-*/
-void mat3d_rotateEuler_new(double result[9], double a1_degrees, double a2_degrees, double a3_degrees, const char order[3])
-{
-	// Convert from degrees to radians
-	double angles[3] = { a1_degrees, a2_degrees, a3_degrees };
-	mat3d_identity(result);
-	double rot[9];
-	for(int i=0; i<3; i++)
-	{
-		if(order[i] == 'X' || order[i] == '1')
-			mat3d_rotateAxis_new(rot, 1, 0, 0, angles[i]);
-		else if(order[i] == 'Y' || order[i] == '2')
-			mat3d_rotateAxis_new(rot, 0, 1, 0, angles[i]);
-		else if(order[i] == 'Z' || order[i] == '3')
-			mat3d_rotateAxis_new(rot, 0, 0, 1, angles[i]);
-		else
-			printf("%s: Unknown axis: %c\n", __func__, order[i]);
-		mat3d_mult_mat3d_new(result, rot, result);
-	}
-}
-
-/** Creates a 4x4 rotation matrix of floats from intrinsic Euler
-    angles. For full documentation, see mat3f_rotateEuler_new().
-
-    @see mat3f_rotateEuler_new()
-*/
-void mat4f_rotateEuler_new(float result[16], float a1_degrees, float a2_degrees, float a3_degrees, const char order[3])
-{
-	float tmpMat[9];
-	mat3f_rotateEuler_new(tmpMat, a1_degrees, a2_degrees, a3_degrees, order);
-	mat4f_from_mat3f(result, tmpMat);
-}
-
-/** Creates a 4x4 rotation matrix of doubles from intrinsic Euler
-    angles. For full documentation, see mat3f_rotateEuler_new().
-
-    @see mat3f_rotateEuler_new()
-*/
-void mat4d_rotateEuler_new(double result[16], double a1_degrees, double a2_degrees, double a3_degrees, const char order[3])
-{
-	double tmpMat[9];
-	mat3d_rotateEuler_new(tmpMat, a1_degrees, a2_degrees, a3_degrees, order);
-	mat4d_from_mat3d(result, tmpMat);
-}
-
-
-
-/** Given a 3x3 rotation matrix and a Euler rotation ordering,
-    calculate Euler angles that could be used to produce the matrix.
-
-    Gimbal lock can occur and depending on the value of the second
-    Euler angle. If you are using traditional Euler angles (first and
-    last axis are the same), gimbal lock occurs when the second angle
-    is either 0 or 180 degrees. If you are using Tait Brian angles
-    (first and last axis are different), then gimbal lock occurs when
-    the second angle is -90 or 90 degrees. In those cases, expect that
-    the Euler->matrix->Euler conversions may not produce the same
-    output Euler angle output as the input since there are multiple
-    Euler angles representing the same orientation under gimbal lock.
-
-    This implementation uses the method described in "Extracting Euler
-    Angles from a Rotation Matrix" by Mike Day (Insomniac Games) to
-    allow matrix->Euler->matrix conversion to have the output matrix
-    be the same (or very similar) to the input matrix. Kevin
-    Shoemake's "Euler Angle Conversion" in Graphics Gems IV also
-    served as a source of inspiration for this code.
-    
-    @param angles The resulting Euler angles in degrees. The first and
-    last angles will be in the range of -180 and 180 degrees. If using
-    traditional Euler angles (first and last axis are the same), the
-    second angle will be between 0 and 90. If using Tait-Bryan angles
-    (first and last axis are different), the second angle will be
-    between -90 and 90. If the second angle is near the range limits,
-    gimbal lock has occurred or almost has occurred.
-    
-    @param m The rotation matrix to calculate the Euler angles from.
-    
-    @param order The axis ordering to use (for example "XYZ"). "XYZ"
-    is commonly used in graphics and aerospace engineering (in OpenGL,
-    where you are looking down -Z, the angles correspond to pitch,
-    yaw, roll, respectively.).
-*/
-void eulerf_from_mat3f(float angles[3], const float m[9], const char order[3])
-{
-	/* Create an easy-to-use array of the axis ordering from the
-	 * user-provided input. */
-	int index[3] = { 0, 0, 0 };
-	for(int i=0; i<3; i++)
-	{
-		if(order[i] == 'X' || order[i] == '1')
-			index[i] = 0;
-		else if(order[i] == 'Y' || order[i] == '2')
-			index[i] = 1;
-		else if(order[i] == 'Z' || order[i] == '3')
-			index[i] = 2;
-		else
-			printf("%s: Unknown axis: %c\n", __func__, order[i]);
-	}
-
-    // Check if the first and last rotations are around the same axis.
-	if(index[0] == index[2])
-	{
-		float sign = 1;
-		if((index[0] == 0 && index[1] == 1 && index[2] == 0) ||
-		   (index[0] == 1 && index[1] == 2 && index[2] == 1) ||
-		   (index[0] == 2 && index[1] == 0 && index[2] == 2))
-		{
-			sign = -1;
-		}
-
-		/* Set index[2] to indicate the 3rd dimension that was left out of
-		   order. */
-		if(index[0] != 0 && index[1] != 0 && index[2] != 0)
-			index[2] = 0;
-		if(index[0] != 1 && index[1] != 1 && index[2] != 1)
-			index[2] = 1;
-		if(index[0] != 2 && index[1] != 2 && index[2] != 2)
-			index[2] = 2;
-
-		// Make code easier to read by storing matrix values directly so
-		// we don't need to calculate the location of the value in the 1D
-		// array in each of our calculations.
-		float index00 = m[mat3_getIndex(index[0],index[0])];
-		float index01 = m[mat3_getIndex(index[0],index[1])];
-		float index02 = m[mat3_getIndex(index[0],index[2])];
-//		float index10 = m[mat3_getIndex(index[1],index[0])]; // unused
-		float index11 = m[mat3_getIndex(index[1],index[1])];
-		float index12 = m[mat3_getIndex(index[1],index[2])];
-//		float index20 = m[mat3_getIndex(index[2],index[0])]; // unused
-		float index21 = m[mat3_getIndex(index[2],index[1])];
-		float index22 = m[mat3_getIndex(index[2],index[2])];
-
-		double sy = sqrtf(index01*index01 + index02*index02);
-		angles[0] = atan2f(index01, -sign*index02);
-		angles[1] = atan2f(sy, index00);
-		float s1=sinf(angles[0]);
-		float c1=cosf(angles[0]);
-		float c2=cosf(angles[1]);
-		angles[2] = atan2f(c1*index12-s1*index22,
-		                   c1*index11+s1*c2*index21);
-	}
-	else // first and last rotations are different axes
-	{
-		float sign = 1;
-		if((index[0] == 1 && index[1] == 2 && index[2] == 0) ||
-		   (index[0] == 2 && index[1] == 0 && index[2] == 1) ||
-		   (index[0] == 0 && index[1] == 1 && index[2] == 2))
-		{
-			sign = -1;
-		}
-
-		// Make code easier to read by storing matrix values directly so
-		// we don't need to calculate the location of the value in the 1D
-		// array in each of our calculations.
-		float index00 = m[mat3_getIndex(index[0],index[0])];
-		float index01 = m[mat3_getIndex(index[0],index[1])];
-		float index02 = m[mat3_getIndex(index[0],index[2])];
-		float index10 = m[mat3_getIndex(index[1],index[0])];
-		float index11 = m[mat3_getIndex(index[1],index[1])];
-		float index12 = m[mat3_getIndex(index[1],index[2])];
-		float index20 = m[mat3_getIndex(index[2],index[0])];
-		float index21 = m[mat3_getIndex(index[2],index[1])];
-		float index22 = m[mat3_getIndex(index[2],index[2])];
-
-		float cy = sqrtf(index00*index00+index10*index10);
-		angles[0] = -sign*atan2f(index21, index22);
-		angles[1] = -sign*atan2f(-index20, cy);
-		float s1= -sign*sinf(angles[0]);
-		float c1=cosf(angles[0]);
-		angles[2] = -sign*atan2f((s1*index02-c1*index01),
-		                         (c1*index11-s1*index12));
-	}
-
-
-	// Convert to degrees.
-	for(int i=0; i<3; i++)
-		angles[i] = angles[i] * 180/M_PI;
-}
-
-
-/** Given a 3x3 rotation matrix and a Euler rotation ordering,
-    calculate the Euler angles used to produce the matrix.
-
- @see eulerf_from_mat3f()
-*/
-void eulerd_from_mat3d(double angles[3], const double m[9], const char order[3])
-{
-	/* Create an easy-to-use array of the axis ordering from the
-	 * user-provided input. */
-	int index[3] = { 0, 0, 0 };
-	for(int i=0; i<3; i++)
-	{
-		if(order[i] == 'X' || order[i] == '1')
-			index[i] = 0;
-		else if(order[i] == 'Y' || order[i] == '2')
-			index[i] = 1;
-		else if(order[i] == 'Z' || order[i] == '3')
-			index[i] = 2;
-		else
-			printf("%s: Unknown axis: %c\n", __func__, order[i]);
-	}
-
-    // Check if the first and last rotations are around the same axis.
-	if(index[0] == index[2])
-	{
-		double sign = 1;
-		if((index[0] == 0 && index[1] == 1 && index[2] == 0) ||
-		   (index[0] == 1 && index[1] == 2 && index[2] == 1) ||
-		   (index[0] == 2 && index[1] == 0 && index[2] == 2))
-		{
-			sign = -1;
-		}
-
-		/* Set index[2] to indicate the 3rd dimension that was left out of
-		   order. */
-		if(index[0] != 0 && index[1] != 0 && index[2] != 0)
-			index[2] = 0;
-		if(index[0] != 1 && index[1] != 1 && index[2] != 1)
-			index[2] = 1;
-		if(index[0] != 2 && index[1] != 2 && index[2] != 2)
-			index[2] = 2;
-
-		// Make code easier to read by storing matrix values directly so
-		// we don't need to calculate the location of the value in the 1D
-		// array in each of our calculations.
-		double index00 = m[mat3_getIndex(index[0],index[0])];
-		double index01 = m[mat3_getIndex(index[0],index[1])];
-		double index02 = m[mat3_getIndex(index[0],index[2])];
-//		float index10 = m[mat3_getIndex(index[1],index[0])]; // unused
-		double index11 = m[mat3_getIndex(index[1],index[1])];
-		double index12 = m[mat3_getIndex(index[1],index[2])];
-//		double index20 = m[mat3_getIndex(index[2],index[0])]; // unused
-		double index21 = m[mat3_getIndex(index[2],index[1])];
-		double index22 = m[mat3_getIndex(index[2],index[2])];
-
-		double sy = sqrt(index01*index01 + index02*index02);
-		angles[0] = atan2(index01, -sign*index02);
-		angles[1] = atan2(sy, index00);
-		double s1=sin(angles[0]);
-		double c1=cos(angles[0]);
-		double c2=cos(angles[1]);
-		angles[2] = atan2(c1*index12-s1*index22,
-		                   c1*index11+s1*c2*index21);
-	}
-	else // first and last rotations are different axes
-	{
-		double sign = 1;
-		if((index[0] == 1 && index[1] == 2 && index[2] == 0) ||
-		   (index[0] == 2 && index[1] == 0 && index[2] == 1) ||
-		   (index[0] == 0 && index[1] == 1 && index[2] == 2))
-		{
-			sign = -1;
-		}
-
-		// Make code easier to read by storing matrix values directly so
-		// we don't need to calculate the location of the value in the 1D
-		// array in each of our calculations.
-		double index00 = m[mat3_getIndex(index[0],index[0])];
-		double index01 = m[mat3_getIndex(index[0],index[1])];
-		double index02 = m[mat3_getIndex(index[0],index[2])];
-		double index10 = m[mat3_getIndex(index[1],index[0])];
-		double index11 = m[mat3_getIndex(index[1],index[1])];
-		double index12 = m[mat3_getIndex(index[1],index[2])];
-		double index20 = m[mat3_getIndex(index[2],index[0])];
-		double index21 = m[mat3_getIndex(index[2],index[1])];
-		double index22 = m[mat3_getIndex(index[2],index[2])];
-
-		double cy = sqrt(index00*index00+index10*index10);
-		angles[0] = -sign*atan2(index21, index22);
-		angles[1] = -sign*atan2(-index20, cy);
-		double s1= -sign*sin(angles[0]);
-		double c1=cos(angles[0]);
-		angles[2] = -sign*atan2((s1*index02-c1*index01),
-		                        (c1*index11-s1*index12));
-	}
-
-
-	// Convert to degrees.
-	for(int i=0; i<3; i++)
-		angles[i] = angles[i] * 180/M_PI;
-}
-
-
-/** Given a 4x4 rotation matrix and a Euler rotation ordering,
- calculate the Euler angles used to produce the matrix.
-
- @see eulerf_from_mat3f()
-*/
-void eulerf_from_mat4f(float angles[3], const float m[16], const char order[3])
-{
-	float tmpMat[9];
-	mat3f_from_mat4f(tmpMat, m);
-	eulerf_from_mat3f(angles, tmpMat, order);
-}
-/** Given a 4x4 rotation matrix and a Euler rotation ordering,
- calculate the Euler angles used to produce the matrix.
-
- @see eulerf_from_mat3f()
-*/
-void eulerd_from_mat4d(double angles[3], const double m[16], const char order[3])
-{
-	double tmpMat[9];
-	mat3d_from_mat4d(tmpMat, m);
-	eulerd_from_mat3d(angles, tmpMat, order);
-}
-
-
-/** Create a 3x3 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axis A vector representing the axis to rotate around (must have a non-zero length). */
-void mat3f_rotateAxisVec_new(float result[9], float degrees, const float axis[3])
-{
-	float angle = degrees * M_PI/180;
-	float c = cosf(angle);
-	float s = sinf(angle);
-	float t = 1-c;
-	// 1-c is numerically unsound when angle is small.
-	// See: https://en.wikipedia.org/wiki/Loss_of_significance
-	// Use fix described at:
-	// http://math.stackexchange.com/questions/38144
-	if(c > .9)
-		t = 2.0 * sinf(angle/2.0)*sinf(angle/2.0);
-
-	// If zero vector is passed in, return identity matrix
-	float length = vec3f_norm(axis);
-	if(length < EPSILON)
-	{
-		printf("%s: Vector to rotate around was 0!", __func__);
-		mat3f_identity(result);
-		return;
-	}
-
-	float x = axis[0]/length;
-	float y = axis[1]/length;
-	float z = axis[2]/length;
-
-	// first row
-	result[0] = x*x*t+c;
-	result[3] = x*y*t-z*s;
-	result[6] = x*z*t+y*s;
-
-	// second row
-	result[1] = y*x*t+z*s;
-	result[4] = y*y*t+c;
-	result[7] = y*z*t-x*s;
-
-	// third row
-	result[2] = z*x*t-y*s;
-	result[5] = z*y*t+x*s;
-	result[8] = z*z*t+c;
-}
-
-
-/** Create a 3x3 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axis A vector representing the axis to rotate around (must have a non-zero length). */
-void mat3d_rotateAxisVec_new(double result[9], double degrees, const double axis[3])
-{
-	double angle = degrees * M_PI/180;
-	double c = cos(angle);
-	double s = sin(angle);
-	double t = 1-c;
-	// 1-c is numerically unsound when angle is small.
-	// See: https://en.wikipedia.org/wiki/Loss_of_significance
-	// Use fix described at:
-	// http://math.stackexchange.com/questions/38144
-	if(angle < .01)
-		t = 2.0 * sin(angle/2.0)*sin(angle/2.0);
-
-	// If zero vector is passed in, return identity matrix
-	double length = vec3d_norm(axis);
-	if(length < EPSILON)
-	{
-		printf("%s: Vector to rotate around was 0!", __func__);
-		mat3d_identity(result);
-		return;
-	}
-
-	double x = axis[0]/length;
-	double y = axis[1]/length;
-	double z = axis[2]/length;
-
-	// first row
-	result[0] = x*x*t+c;
-	result[3] = x*y*t-z*s;
-	result[6] = x*z*t+y*s;
-
-	// second row
-	result[1] = y*x*t+z*s;
-	result[4] = y*y*t+c;
-	result[7] = y*z*t-x*s;
-
-	// third row
-	result[2] = z*x*t-y*s;
-	result[5] = z*y*t+x*s;
-	result[8] = z*z*t+c;
-}
-
-/** Create a 4x4 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axis A vector representing the axis to rotate around (must have a non-zero length). */
-void mat4f_rotateAxisVec_new(float result[16], float degrees, const float axis[3])
-{
-	float tmpMat[9];
-	mat3f_rotateAxisVec_new(tmpMat, degrees, axis);
-	mat4f_from_mat3f(result, tmpMat);
-}
-/** Create a 4x4 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axis A vector representing the axis to rotate around (must have a non-zero length). */
-void mat4d_rotateAxisVec_new(double result[16], double degrees, const double axis[3])
-{
-	double tmpMat[9];
-	mat3d_rotateAxisVec_new(tmpMat, degrees, axis);
-	mat4d_from_mat3d(result, tmpMat);
-}
-
-/** Create a 3x3 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axisX The x-component of the axis to rotate around.
- * @param axisY The y-component of the axis to rotate around.
- * @param axisZ The z-component of the axis to rotate around.
- */
-void mat3f_rotateAxis_new(float  result[ 9], float  degrees, float axisX, float axisY, float axisZ)
-{
-	float vec[3];
-	vec3f_set(vec, axisX, axisY, axisZ);
-	mat3f_rotateAxisVec_new(result, degrees, vec);
-}
-/** Create a 3x3 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axisZ The x-component of the axis to rotate around.
- * @param axisY The y-component of the axis to rotate around.
- * @param axisZ The z-component of the axis to rotate around.
- */
-void mat3d_rotateAxis_new(double result[ 9], double degrees, double axisX, double axisY, double axisZ)
-{
-	double vec[3];
-	vec3d_set(vec, axisX, axisY, axisZ);
-	mat3d_rotateAxisVec_new(result, degrees, vec);
-}
-/** Create a 4x4 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axisX The x-component of the axis to rotate around.
- * @param axisY The y-component of the axis to rotate around.
- * @param axisZ The z-component of the axis to rotate around.
- */
-void mat4f_rotateAxis_new(float  result[16], float  degrees, float axisX, float axisY, float axisZ)
-{
-	float vec[3];
-	vec3f_set(vec, axisX, axisY, axisZ);
-	mat4f_rotateAxisVec_new(result, degrees, vec);
-}
-/** Create a 4x4 rotation matrix given a rotation axis and the number
- * of degrees to rotate.
- *
- * @param result The location to store the resulting matrix.
- * @param degrees The number of degrees to rotate around the axis.
- * @param axisX The x-component of the axis to rotate around.
- * @param axisY The y-component of the axis to rotate around.
- * @param axisZ The z-component of the axis to rotate around.
- */
-void mat4d_rotateAxis_new(double result[16], double degrees, double axisX, double axisY, double axisZ)
-{
-	double vec[3];
-	vec3d_set(vec, axisX, axisY, axisZ);
-	mat4d_rotateAxisVec_new(result, degrees, vec);
-}
-
-
-/** Creates a 3x3 rotation matrix from a quaternion (x,y,z,w).
-
-    This method makes assumptions that are commonly made in this file:
-    A column vector is multiplied on the left of the matrix produced
-    by this function. We are using a right-handed coordinate system
-    and right-handed rotations.
-
-    This code is based on Ken Shoemake's SIGGRAPH Tutorial on Quaternions:
-    http://www.cs.ucr.edu/~vbz/resources/quatut.pdf
-
-    @param matrix The location to store the output matrix.
-   
-    @param quat The input quaternion. The quaternion does not need
-    to be unit length.
-*/
-void mat3f_rotateQuatVec_new(float matrix[9], const float quat[4])
-{
-	int X=0, Y=1, Z=2, W=3;
-	float s = 2.0 / (quat[X]*quat[X] + quat[Y]*quat[Y] +
-	                 quat[Z]*quat[Z] + quat[W]*quat[W]);
-	float xs, ys, zs,
-	      wx, wy, wz,
-	      xx, xy, xz,
-	      yy, yz, zz;
-
-	xs = quat[X] * s;   ys = quat[Y] * s;   zs = quat[Z] * s;
-	wx = quat[W] * xs;  wy = quat[W] * ys;  wz = quat[W] * zs;
-	xx = quat[X] * xs;  xy = quat[X] * ys;  xz = quat[X] * zs;
-	yy = quat[Y] * ys;  yz = quat[Y] * zs;  zz = quat[Z] * zs;
-
-	// first row
-	matrix[0] = 1.0 - (yy + zz);
-	matrix[3] = xy - wz;
-	matrix[6] = xz + wy;
-
-	// second row
-	matrix[1] = xy + wz;
-	matrix[4] = 1.0 - (xx + zz);
-	matrix[7] = yz - wx;
-
-	// third row
-	matrix[2] = xz - wy;
-	matrix[5] = yz + wx;
-	matrix[8] = 1.0 - (xx + yy);
-}
-
-/** Creates a 3x3 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat3f_rotateQuatVec_new() */
-void mat3d_rotateQuatVec_new(double matrix[9], const double quat[4])
-{
-	int X=0, Y=1, Z=2, W=3;
-	double s = 2.0 / (quat[X]*quat[X] + quat[Y]*quat[Y] +
-	                 quat[Z]*quat[Z] + quat[W]*quat[W]);
-	double xs, ys, zs,
-	       wx, wy, wz,
-	       xx, xy, xz,
-	       yy, yz, zz;
-
-	xs = quat[X] * s;   ys = quat[Y] * s;   zs = quat[Z] * s;
-	wx = quat[W] * xs;  wy = quat[W] * ys;  wz = quat[W] * zs;
-	xx = quat[X] * xs;  xy = quat[X] * ys;  xz = quat[X] * zs;
-	yy = quat[Y] * ys;  yz = quat[Y] * zs;  zz = quat[Z] * zs;
-
-	// first row
-	matrix[0] = 1.0 - (yy + zz);
-	matrix[3] = xy - wz;
-	matrix[6] = xz + wy;
-
-	// second row
-	matrix[1] = xy + wz;
-	matrix[4] = 1.0 - (xx + zz);
-	matrix[7] = yz - wx;
-
-	// third row
-	matrix[2] = xz - wy;
-	matrix[5] = yz + wx;
-	matrix[8] = 1.0 - (xx + yy);
-}
-/** Creates a 4x4 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat4f_rotateQuatVec_new(float matrix[16], const float quat[4])
-{
-	float tmpMat[9];
-	mat3f_rotateQuatVec_new(tmpMat, quat);
-	mat4f_from_mat3f(matrix, tmpMat);
-}
-/** Creates a 4x4 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat4d_rotateQuatVec_new(double matrix[16], const double quat[4])
-{
-	double tmpMat[9];
-	mat3d_rotateQuatVec_new(tmpMat, quat);
-	mat4d_from_mat3d(matrix, tmpMat);
-}
-/** Creates a 3x3 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat3f_rotateQuat_new(float matrix[9], float x, float y, float z, float w)
-{
-	float quat[4] = { x,y,z,w };
-	mat3f_rotateQuatVec_new(matrix, quat);
-}
-/** Creates a 3x3 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat3d_rotateQuat_new(double matrix[9], double x, double y, double z, double w)
-{
-	double quat[4] = { x,y,z,w };
-	mat3d_rotateQuatVec_new(matrix, quat);
-}
-/** Creates a 4x4 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat4f_rotateQuat_new(float matrix[16], float x, float y, float z, float w)
-{
-	float quat[4] = { x,y,z,w };
-	mat3f_rotateQuatVec_new(matrix, quat);
-}
-/** Creates a 4x4 rotation matrix from a quaternion (x,y,z,w). For
- * full documentation, see mat4f_rotateQuatVec_new() */
-void mat4d_rotateQuat_new(double matrix[16], double x, double y, double z, double w)
-{
-	double quat[4] = { x,y,z,w };
-	mat3d_rotateQuatVec_new(matrix, quat);
-}
-
-/** Creates a unit quaternion (x,y,z,w) from a rotation matrix.
-
-    This code is based on Ken Shoemake's SIGGRAPH Tutorial on Quaternions:
-    http://www.cs.ucr.edu/~vbz/resources/quatut.pdf
-    It is also based code in quat.c on VRPN 7.26 (public domain).
-
-    @param matrix The location to store the output matrix.
-   
-    @param quat The input quaternion. The quaternion does not need
-    to be unit length.
-*/
-void quatf_from_mat3f(float quat[4], const float matrix[9])
-{
-	int X=0, Y=1, Z=2, W=3;
-	float trace = matrix[0]+matrix[4]+matrix[8]; // sum of diagonal
-
-   if (trace > 0.0)
-   {
-	   float s = sqrtf(trace + 1.0);
-	   quat[W] = s * 0.5;
-	   s = 0.5 / s;
-
-	   quat[X] = (matrix[mat3_getIndex(Z,Y)] - matrix[mat3_getIndex(Y,Z)]) * s;
-	   quat[Y] = (matrix[mat3_getIndex(X,Z)] - matrix[mat3_getIndex(Z,X)]) * s;
-	   quat[Z] = (matrix[mat3_getIndex(Y,Z)] - matrix[mat3_getIndex(X,Y)]) * s;
-   }
-
-   else
-   {
-	   int next[3] = {Y, Z, X};
-	   int i = X;
-	   if (matrix[mat3_getIndex(Y,Y)] > matrix[mat3_getIndex(X,X)])
-		   i = Y;
-	   if (matrix[mat3_getIndex(Z,Z)] > matrix[mat3_getIndex(i,i)])
-		   i = Z;
-	   int j = next[i];
-	   int k = next[j];
-	   
-	   float s = sqrtf( (matrix[mat3_getIndex(i,i)] - (matrix[mat3_getIndex(j,j)] + matrix[mat3_getIndex(k,k)])) + 1.0 );
-	   quat[i] = s * 0.5;
-	   
-	   s = 0.5 / s;
-	   
-	   quat[W] = (matrix[mat3_getIndex(k,j)] - matrix[mat3_getIndex(j,k)]) * s;
-	   quat[j] = (matrix[mat3_getIndex(j,i)] + matrix[mat3_getIndex(i,j)]) * s;
-	   quat[k] = (matrix[mat3_getIndex(k,i)] + matrix[mat3_getIndex(i,k)]) * s;
-   }
-}
-/** Creates a unit quaternion (x,y,z,w) from a rotation matrix. For full documentation, see quatf_from_mat3f() */
-void quatd_from_mat3d(double quat[4], const double matrix[9])
-{
-	int X=0, Y=1, Z=2, W=3;
-	double trace = matrix[0]+matrix[4]+matrix[8]; // sum of diagonal
-
-   if (trace > 0.0)
-   {
-	   double s = sqrtf(trace + 1.0);
-	   quat[W] = s * 0.5;
-	   s = 0.5 / s;
-
-	   quat[X] = (matrix[mat3_getIndex(Z,Y)] - matrix[mat3_getIndex(Y,Z)]) * s;
-	   quat[Y] = (matrix[mat3_getIndex(X,Z)] - matrix[mat3_getIndex(Z,X)]) * s;
-	   quat[Z] = (matrix[mat3_getIndex(Y,Z)] - matrix[mat3_getIndex(X,Y)]) * s;
-   }
-
-   else
-   {
-	   int next[3] = {Y, Z, X};
-	   int i = X;
-	   if (matrix[mat3_getIndex(Y,Y)] > matrix[mat3_getIndex(X,X)])
-		   i = Y;
-	   if (matrix[mat3_getIndex(Z,Z)] > matrix[mat3_getIndex(i,i)])
-		   i = Z;
-	   int j = next[i];
-	   int k = next[j];
-	   
-	   float s = sqrtf( (matrix[mat3_getIndex(i,i)] - (matrix[mat3_getIndex(j,j)] + matrix[mat3_getIndex(k,k)])) + 1.0 );
-	   quat[i] = s * 0.5;
-	   
-	   s = 0.5 / s;
-
-	   quat[W] = (matrix[mat3_getIndex(k,j)] - matrix[mat3_getIndex(j,k)]) * s;
-	   quat[j] = (matrix[mat3_getIndex(j,i)] + matrix[mat3_getIndex(i,j)]) * s;
-	   quat[k] = (matrix[mat3_getIndex(k,i)] + matrix[mat3_getIndex(i,k)]) * s;
-   }
-}
-
-/** Creates a unit quaternion (x,y,z,w) from a rotation matrix. For full documentation, see quatf_from_mat3f() */
-void quatf_from_mat4f(float quat[4], const float matrix[16])
-{
-	float tmpMat[9];
-	mat3f_from_mat4f(tmpMat, matrix);
-	quatf_from_mat3f(quat, tmpMat);
-}
-/** Creates a unit quaternion (x,y,z,w) from a rotation matrix. For full documentation, see quatf_from_mat3f() */
-void quatd_from_mat4d(double quat[4], const double matrix[16])
-{
-	double tmpMat[9];
-	mat3d_from_mat4d(tmpMat, matrix);
-	quatd_from_mat3d(quat, tmpMat);
-}
-
-/** Creates a quaternion (x,y,z,w) based on an axis and the number of degrees to rotate around that axis. 
-
-    Based code in quat.c on VRPN 7.26 (public domain).
-
-    @param quat The location to store the output quaternion. If the axis is a zero vector, the identity quaternion is returned.
-    @param x The x-component of a vector representing the axis to rotate around.
-    @param y The y-component of a vector representing the axis to rotate around.
-    @param z The z-component of a vector representing the axis to rotate around.
-    @param degrees The amount to rotate around the given axis in degrees.
-*/
-void quatf_rotateAxis_new(float quat[4], float degrees, float x, float y, float z)
-{
-	int X=0,Y=1,Z=2,W=3;
-	// Angle needs to be negated to make it correspond to the behavior of mat3f_rotateAxis_new().
-	float angle = -degrees * M_PI/180;
-
-	/* normalize vector */
-	float length = sqrtf( x*x + y*y + z*z );
-
-	/* If zero vector passed in for the axis, just return identity quaternion   */
-	if (length < 1e-10) {
-		quat[X] = 0;
-		quat[Y] = 0;
-		quat[Z] = 0;
-		quat[W] = 1;
-		return;
-	}
-
-	x /= length;
-	y /= length;
-	z /= length;
-
-	float cosA = cosf(angle / 2.0);
-	float sinA = sinf(angle / 2.0);
-	quat[W] = cosA;
-	quat[X] = sinA * x;
-	quat[Y] = sinA * y;
-	quat[Z] = sinA * z;
-}
-
-/** Creates a quaternion (x,y,z,w) based on an axis and the number of
- * degrees to rotate around that axis. See quatf_rotateAxis_new() for
- * full documentation.
-*/
-void quatd_rotateAxis_new(double quat[4], double degrees, double x, double y, double z)
-{
-	int X=0,Y=1,Z=2,W=3;
-	// Angle needs to be negated to make it correspond to the behavior of mat3f_rotateAxis_new().
-	double angle = -degrees * M_PI/180;
-
-	/* normalize vector */
-	double length = sqrt( x*x + y*y + z*z );
-
-	/* If zero vector passed in for the axis, just return identity quaternion   */
-	if (length < 1e-10) {
-		quat[X] = 0;
-		quat[Y] = 0;
-		quat[Z] = 0;
-		quat[W] = 1;
-		return;
-	}
-
-	x /= length;
-	y /= length;
-	z /= length;
-
-	double cosA = cos(angle / 2.0);
-	double sinA = sin(angle / 2.0);
-	quat[W] = cosA;
-	quat[X] = sinA * x;
-	quat[Y] = sinA * y;
-	quat[Z] = sinA * z;
-}
-/** Creates a quaternion (x,y,z,w) based on an axis and the number of
- * degrees to rotate around that axis. See quatf_rotateAxis_new() for
- * full documentation.
-*/
-void quatf_rotateAxisVec_new(float quat[4], float degrees, const float axis[3])
-{
-	quatf_rotateAxis_new(quat, degrees, axis[0], axis[1], axis[2]);
-}
-
-/** Creates a quaternion (x,y,z,w) based on an axis and the number of
- * degrees to rotate around that axis. See quatf_rotateAxis_new() for
- * full documentation.
-*/
-void quatd_rotateAxisVec_new(double quat[4], double degrees, const double axis[3])
-{
-	quatd_rotateAxis_new(quat, degrees, axis[0], axis[1], axis[2]);
-}
-
-
-/** Spherical linear interpolation of unit quaternion.
-
- This code is based on Ken Shoemake's code and is in the public
- domain.
-
- @param result The interpolated quaternion.
- @param start The starting quaternion.
- @param end The ending quaternion.
- @param t As t goes from 0 to 1, the "result" quaternion goes from the
- "start" quaternion to the "end" quaternion. The routine should always
- return a point along the shorter of the two paths between the two
- (the vector may be negated in the end).
- */
-void quatf_slerp_new(float result[4], const float start[4], const float end[4], float t)
-{
-	float copyOfStart[4];
-	vec4f_copy(copyOfStart, start);
-	float cosOmega = vec4f_dot(start, end);
-
-	if(cosOmega<0)
-	{
-		cosOmega = -cosOmega;
-		vec4f_scalarMult(copyOfStart, -1);
-	}
-	
-	if(1+cosOmega > 1e-10)
-	{
-		float startScale, endScale;
-		if(1-cosOmega > 1e-10)
-		{
-			float omega = acosf(cosOmega);
-			float sinOmega = sinf(omega);
-			startScale = sinf((1.0-t)*omega / sinOmega);
-			endScale = sinf(t*omega)/sinOmega;
-		}
-		else
-		{
-			startScale = 1.0-t;
-			endScale = t;
-		}
-		float scaledStart[4], scaledEnd[4];
-		vec4f_scalarMult_new(scaledStart, copyOfStart, startScale);
-		vec4f_scalarMult_new(scaledEnd,   end,         endScale);
-		vec4f_add_new(result, scaledStart, scaledEnd);
-	}
 	else
 	{
-		vec4f_set(result, -copyOfStart[1], copyOfStart[0], -copyOfStart[3], copyOfStart[2]);
-		float startScale = sin((0.5-t)*M_PI);
-		float endScale = sin(t*M_PI);
-		float scaledStart[4], scaledEnd[4];
-		vec4f_scalarMult_new(scaledStart, copyOfStart,  startScale);
-		vec4f_scalarMult_new(scaledEnd,   result,       endScale);
-		vec4f_add_new(result, scaledStart, scaledEnd);
+		fclose(f);
+		return 1;
 	}
-	vec4f_normalize(result);
 }
 
-/** Spherical linear interpolation of unit quaternion.
+/* Given a filename, tries to find that file by:
+   1) Looking for the file using the given path.
 
- This code is based on Ken Shoemake's code and is in the public
- domain.
+   2) Change '\' characters to '/' in case the provided path uses
+   Windows-style path separators.
 
- @param result The interpolated quaternion.
- @param start The starting quaternion.
- @param end The ending quaternion.
- @param t As t goes from 0 to 1, the "result" quaternion goes from the
- "start" quaternion to the "end" quaternion. The routine should always
- return a point along the shorter of the two paths between the two
- (the vector may be negated in the end).
- */
-void quatd_slerp_new(double result[4], const double start[4], const double end[4], double t)
+   3) Search for file relative to directory of executable (on Linux)
+
+   4) Combine possibilities 2 and 3 (on Linux)
+
+   @param filename The name of the file the caller wants to open.
+   @return A path to the file that may be different than the path
+   provided in the filename parameter. The returned string should be
+   free()'d. If the file was not found, a copy of the original
+   filename is returned.
+*/
+char* kuhl_find_file(const char *filename)
 {
-	double copyOfStart[4];
-	vec4d_copy(copyOfStart, start);
-	double cosOmega = vec4d_dot(start, end);
-
-	if(cosOmega<0)
-	{
-		cosOmega = -cosOmega;
-		vec4d_scalarMult(copyOfStart, -1);
-	}
+	if(kuhl_can_read_file(filename))
+		return strdup(filename);
 	
-	if(1+cosOmega > 1e-10)
+	/* Try changing path separators from Windows style '\' to Linux
+	 * style '/'. */
+	char *pathSepChange = strdup(filename);
+	char *tmp = pathSepChange;
+	while(*tmp != '\0')
 	{
-		double startScale, endScale;
-		if(1-cosOmega > 1e-10)
-		{
-			double omega = acos(cosOmega);
-			double sinOmega = sin(omega);
-			startScale = sin((1.0-t)*omega / sinOmega);
-			endScale = sin(t*omega)/sinOmega;
-		}
-		else
-		{
-			startScale = 1.0-t;
-			endScale = t;
-		}
-		double scaledStart[4], scaledEnd[4];
-		vec4d_scalarMult_new(scaledStart, copyOfStart, startScale);
-		vec4d_scalarMult_new(scaledEnd,   end,         endScale);
-		vec4d_add_new(result, scaledStart, scaledEnd);
+		if(*tmp == '\\')
+			*tmp = '/';
+		tmp++;
 	}
-	else
+	if(kuhl_can_read_file(pathSepChange))
+		return pathSepChange;
+
+#ifdef __linux
+	/* If we can't open the filename directly, then try opening it
+	   with the full path based on the path to the
+	   executable. This allows us to more easily run programs from
+	   outside of the same directory that the executable that the
+	   executable resides without having to specify an absolute
+	   path to our shader programs. */
+	char exe[1024];
+	ssize_t len = readlink("/proc/self/exe", exe, 1023);
+	exe[len]='\0';
+	char *dir = dirname(exe);
+	char *newPathFile = malloc(sizeof(char)*1024);
+	snprintf(newPathFile, 1024, "%s/%s", dir, filename);
+	if(kuhl_can_read_file(newPathFile))
 	{
-		vec4d_set(result, -copyOfStart[1], copyOfStart[0], -copyOfStart[3], copyOfStart[2]);
-		double startScale = sin((0.5-t)*M_PI);
-		double endScale = sin(t*M_PI);
-		double scaledStart[4], scaledEnd[4];
-		vec4d_scalarMult_new(scaledStart, copyOfStart, startScale);
-		vec4d_scalarMult_new(scaledEnd,   result,      endScale);
-		vec4d_add_new(result, scaledStart, scaledEnd);
+		free(pathSepChange);
+		return newPathFile;
 	}
-	vec4d_normalize(result);
-}
-
-	
-
-
-/** Creates a new 4x4 float translation matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new translation matrix.
-    @param x The x coordinate to be placed into the matrix.
-    @param y The y coordinate to be placed into the matrix.
-    @param z The z coordinate to be placed into the matrix.
-*/
-void mat4f_translate_new(float  result[16], float x, float y, float z)
-{
-	mat4f_identity(result);
-	result[12] = x;
-	result[13] = y;
-	result[14] = z;
-	result[15] = 1;
-}
-/** Creates a new 4x4 double translation matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new translation matrix.
-    @param x The x coordinate to be placed into the matrix.
-    @param y The y coordinate to be placed into the matrix.
-    @param z The z coordinate to be placed into the matrix.
-*/
-void mat4d_translate_new(double result[16], double x, double y, double z)
-{
-	mat4d_identity(result);
-	result[12] = x;
-	result[13] = y;
-	result[14] = z;
-	result[15] = 1;
-}
-/** Creates a new 4x4 float translation matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new translation matrix.
-    @param xyz A vector containing the translation value to put in the matrix.
-*/
-void mat4f_translateVec_new(float  result[16], const float  xyz[3])
-{ mat4f_translate_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 4x4 double translation matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new translation matrix.
-    @param xyz A vector containing the translation value to put in the matrix.
-*/
-void mat4d_translateVec_new(double result[16], const double xyz[3])
-{ mat4d_translate_new(result, xyz[0], xyz[1], xyz[2]); }
-
-/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat4f_scale_new(float  result[16], float x, float y, float z)
-{
-	mat4f_identity(result);
-	result[mat4_getIndex(0,0)] = x;
-	result[mat4_getIndex(1,1)] = y;
-	result[mat4_getIndex(2,2)] = z;
-}
-/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat4d_scale_new(double result[16], double x, double y, double z)
-{
-	mat4d_identity(result);
-	result[mat4_getIndex(0,0)] = x;
-	result[mat4_getIndex(1,1)] = y;
-	result[mat4_getIndex(2,2)] = z;
-}
-/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat4f_scaleVec_new(float  result[16], const float  xyz[3])
-{ mat4f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat4d_scaleVec_new(double result[16], const double xyz[3])
-{ mat4d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat3f_scale_new(float  result[9], float x, float y, float z)
-{
-	mat3f_identity(result);
-	result[mat3_getIndex(0,0)] = x;
-	result[mat3_getIndex(1,1)] = y;
-	result[mat3_getIndex(2,2)] = z;
-}
-/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat3d_scale_new(double result[9], double x, double y, double z)
-{
-	mat3d_identity(result);
-	result[mat3_getIndex(0,0)] = x;
-	result[mat3_getIndex(1,1)] = y;
-	result[mat3_getIndex(2,2)] = z;
-}
-/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat3f_scaleVec_new(float  result[9], const float  xyz[3])
-{ mat3f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat3d_scaleVec_new(double result[9], const double xyz[3])
-{ mat3d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-
-
-/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
-    the identity and then the 3x3 matrix is copied into the upper left
-    corner of the matrix.
-    @param dest The new 4x4 matrix.
-    @param src The original 3x3 matrix.
-*/
-void mat4f_from_mat3f(float  dest[16], const float  src[ 9])
-{
-	mat4f_identity(dest);
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
-}
-/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
-    the identity and then the 3x3 matrix is copied into the upper left
-    corner of the matrix.
-    @param dest The new 4x4 matrix.
-    @param src The original 3x3 matrix.
-*/
-void mat4d_from_mat3d(double dest[16], const double src[ 9])
-{
-	mat4d_identity(dest);
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
-}
-
-/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
-    @param dest The new 3x3 matrix.
-    @param src The original 4x4 matrix.
-*/
-void mat3f_from_mat4f(float  dest[ 9], const float  src[16])
-{
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
-}
-/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
-    @param dest The new 3x3 matrix.
-    @param src The original 4x4 matrix.
-*/
-void mat3d_from_mat4d(double dest[ 9], const double src[16])
-{
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
-}
-
-/** Creates a view frustum projection matrix (float). This
- * creates a matrix similar to the one that glFrustum() would
- * apply to the OpenGL 2.0 matrix stack. A simpler (but less
- * flexible) alternative to this function is mat4f_perspective_new().
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 view frustum projection matrix.
- *
- * @param left Coordinate of left edge of the screen.
- * @param right Coordinate of right edge of the screen.
- * @param bottom Coordinate of bottom edge of the screen.
- * @param top Coordinate of top edge of the screen.
- * @param near Near clipping plane distance (positive).
- * @param far Far clipping plane distance (positive).
- */
-void mat4f_frustum_new(float result[16], float left, float right, float bottom, float top, float near, float far)
-{
-	// glFrustum() requires near and far to be positive numbers.
-	near = fabsf(near);
-	far = fabsf(far);
-	mat4f_identity(result);
-	if(left == right || bottom == top || near == far || near == 0)
+	/* Try using executable directory along with the path that has
+	 * corrected file path separators */
+	snprintf(newPathFile, 1024, "%s/%s", dir, pathSepChange);
+	if(kuhl_can_read_file(newPathFile))
 	{
-		fprintf(stderr, "%s: Invalid view frustum matrix.\n", __func__);
-		return;
+		free(pathSepChange);
+		return newPathFile;
 	}
-	result[0]  =  2.0f * near / (right - left);
-    result[5]  =  2.0f * near / (top - bottom);
-	result[8]  =  (right + left) / (right - left);
-    result[9]  =  (top + bottom) / (top - bottom);
-    result[10] = -(far + near) / (far - near);
-    result[11] = -1.0f;
-    result[14] = -(2.0f * far * near) / (far - near);
-    result[15] =  0.0f;
+#endif
+
+	free(pathSepChange);
+	return strdup(filename);
 }
-/** Creates a view frustum projection matrix (double). This
- * creates a matrix similar to the one that glFrustum() would
- * apply to the OpenGL 2.0 matrix stack. A simpler (but less
- * flexible) alternative to this function is mat4f_perspective_new().
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 view frustum projection matrix.
- *
- * @param left Coordinate of left edge of the screen.
- * @param right Coordinate of right edge of the screen.
- * @param bottom Coordinate of bottom edge of the screen.
- * @param top Coordinate of top edge of the screen.
- * @param near Near clipping plane distance (positive).
- * @param far Far clipping plane distance (positive).
- */
-void mat4d_frustum_new(double result[16], double left, double right, double bottom, double top, double near, double far)
-{
-	// glFrustum() requires near and far to be positive numbers.
-	near = fabs(near);
-	far = fabs(far);
-	mat4d_identity(result);
-	if(left == right || bottom == top || near == far || near == 0)
-	{
-		fprintf(stderr, "%s: Invalid view frustum matrix.\n", __func__);
-		return;
-	}
-	result[0]  =  2.0f * near / (right - left);
-    result[5]  =  2.0f * near / (top - bottom);
-	result[8]  =  (right + left) / (right - left);
-    result[9]  =  (top + bottom) / (top - bottom);
-    result[10] = -(far + near) / (far - near);
-    result[11] = -1.0f;
-    result[14] = -(2.0f * far * near) / (far - near);
-    result[15] =  0.0f;
-}
-
-/** Creates a orthographic projection matrix (float). This
- * creates a matrix similar to the one that glOrtho() would
- * apply to the OpenGL 2.0 matrix stack. A simpler (but less
- * flexible) alternative to this function is mat4f_perspective_new().
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 orthographic projection matrix.
- *
- * @param left Coordinate of left edge of the screen.
- * @param right Coordinate of right edge of the screen.
- * @param bottom Coordinate of bottom edge of the screen.
- * @param top Coordinate of top edge of the screen.
- * @param near Near clipping plane distance (negative values are behind the viewer).
- * @param far Far clipping plane distance (negative values are behind the viewer).
- */
-void mat4f_ortho_new(float result[16], float left, float right, float bottom, float top, float near, float far)
-{
-	mat4f_identity(result);
-	if(left == right || bottom == top || near == far)
-	{
-		fprintf(stderr, "%s: Invalid orthographic projection matrix.\n", __func__);
-		return;
-	}
-	result[0]  =  2 / (right-left);
-	result[5]  =  2 / (top-bottom);
-	result[10] = -2 / (far-near);
-	result[12] = -(right+left)/(right-left);
-	result[13] = -(top+bottom)/(top-bottom);
-	result[14] = -(far+near)/(far-near);
-}
-
-/** Creates a orthographic projection matrix (double). This
- * creates a matrix similar to the one that glOrtho() would
- * apply to the OpenGL 2.0 matrix stack. A simpler (but less
- * flexible) alternative to this function is mat4d_perspective_new().
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 orthographic projection matrix.
- *
- * @param left Coordinate of left edge of the screen.
- * @param right Coordinate of right edge of the screen.
- * @param bottom Coordinate of bottom edge of the screen.
- * @param top Coordinate of top edge of the screen.
- * @param near Near clipping plane distance (negative values are behind the viewer).
- * @param far Far clipping plane distance (negative values are behind the viewer).
- */
-void mat4d_ortho_new(double result[16], double left, double right, double bottom, double top, double near, double far)
-{
-	mat4d_identity(result);
-	if(left == right || bottom == top || near == far)
-	{
-		fprintf(stderr, "%s: Invalid orthographic projection matrix.\n", __func__);
-		return;
-	}
-	result[0]  =  2 / (right-left);
-	result[5]  =  2 / (top-bottom);
-	result[10] = -2 / (far-near);
-	result[12] = -(right+left)/(right-left);
-	result[13] = -(top+bottom)/(top-bottom);
-	result[14] = -(far+near)/(far-near);
-}
-
-/** Creates a perspective projection matrix (float). This creates a matrix
- * that is similar to what gluPerspective() would typically apply to the
- * matrix stack earlier versions of OpenGL.
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 view frustum projection matrix.
- *
- * @param fovy The field of view in the horizontal direction (degrees)
- * @param aspect The aspect ratio of the screen/window/viewport.
- * @param near Near clipping plane distance (positive)
- * @param far Far clipping plane distance (positive)
- */
-void mat4f_perspective_new(float result[16], float  fovy, float  aspect, float  near, float  far)
-{
-	near = fabs(near);
-	far = fabs(far);
-	if(near == 0)
-	{
-		fprintf(stderr, "%s: Invalid perspective projection matrix.\n", __func__);
-		return;
-	}
-	float fovyRad = fovy * M_PI/180.0f;
-	float height = near * tanf(fovyRad/2.0f);
-	float width = height * aspect;
-	mat4f_frustum_new(result, -width, width, -height, height, near, far);
-}
-/** Creates a perspective projection matrix (double). This creates a matrix
- * that is similar to what gluPerspective() would typically apply to the
- * matrix stack earlier versions of OpenGL.
- * Prints a message and returns the identity matrix on error.
- *
- * @param result The resulting 4x4 view frustum projection matrix.
- *
- * @param fovy The field of view in the horizontal direction (degrees)
- * @param aspect The aspect ratio of the screen/window/viewport.
- * @param near Near clipping plane distance (positive)
- * @param far Far clipping plane distance (positive)
- */
-void mat4d_perspective_new(double result[16], double fovy, double aspect, double near, double far)
-{
-	near = abs(near);
-	far = abs(far);
-	if(near == 0)
-	{
-		fprintf(stderr, "%s: Invalid perspective projection matrix.\n", __func__);
-		mat4d_identity(result);
-		return;
-	}
-	double fovyRad = fovy * M_PI/180.0;
-	double height = near * tan(fovyRad/2.0);
-	double width = height * aspect;
-	mat4d_frustum_new(result, -width, width, -height, height, near, far);
-}
-
-/** Creates a new lookat matrix (aka viewing transformation) which
- * defines the position and orientation of the virtual camera. This
- * creates a matrix that is similar to what gluLookAt() would
- * typically apply to the matrix stack in earlier versions of OpenGL.
- *
- * @param result The resulting view transformation matrix.
- * @param eye The position of the virtual camera.
- * @param center A point in 3D space that the camera is looking at. (This value is not a vector that the camera is looking down).
- * @param up An up vector. If you don't know what to put here, start with 0,1,0. (The up vector must not be parallel to the view vector calculated as center-eye.)
- */
-void mat4f_lookatVec_new(float  result[16], const float  eye[3], const float  center[3], const float  up[3])
-{
-	/* Calculate appropriate vectors */
-	float look[3];
-	vec3f_sub_new(look, center, eye);
-	vec3f_normalize(look);
-	float side[3];
-	vec3f_cross_new(side, look, up);
-	vec3f_normalize(side);
-	float newUp[3];
-	vec3f_cross_new(newUp, side, look);
-
-	/* Calculate rotation matrix that will be used to compute final matrix. */
-	float rotationPart[16];
-	mat4f_identity(rotationPart);
-	rotationPart[ 0] = side[0];
-	rotationPart[ 4] = side[1];
-	rotationPart[ 8] = side[2];
-	rotationPart[ 1] = newUp[0];
-	rotationPart[ 5] = newUp[1];
-	rotationPart[ 9] = newUp[2];
-	rotationPart[ 2] = -look[0];
-	rotationPart[ 6] = -look[1];
-	rotationPart[10] = -look[2];
-
-	/* Calculate translation matrix that will be used to compute final matrix. */
-	float negEye[3];
-	vec3f_scalarMult_new(negEye, eye, -1);
-	float translationPart[16];
-	mat4f_translateVec_new(translationPart, negEye);
-
-	/* Multiply the matrices together */
-	mat4f_mult_mat4f_new(result, rotationPart, translationPart);
-}
-/** Creates a new lookat matrix (aka viewing transformation) which
- * defines the position and orientation of the virtual camera.
- * For full documentation, see mat4f_lookatVec_new()
- */
-void mat4d_lookatVec_new(double result[16], const double eye[3], const double center[3], const double up[3])
-{
-	/* Calculate appropriate vectors */
-	double look[3];
-	vec3d_sub_new(look, center, eye);
-	vec3d_normalize(look);
-	double side[3];
-	vec3d_cross_new(side, look, up);
-	vec3d_normalize(side);
-	double newUp[3];
-	vec3d_cross_new(newUp, side, look);
-
-	/* Calculate rotation matrix that will be used to compute final matrix. */
-	double rotationPart[16];
-	mat4d_identity(rotationPart);
-	rotationPart[ 0] = side[0];
-	rotationPart[ 4] = side[1];
-	rotationPart[ 8] = side[2];
-	rotationPart[ 1] = newUp[0];
-	rotationPart[ 5] = newUp[1];
-	rotationPart[ 9] = newUp[2];
-	rotationPart[ 2] = -look[0];
-	rotationPart[ 6] = -look[1];
-	rotationPart[10] = -look[2];
-
-	/* Calculate translation matrix that will be used to compute final matrix. */
-	double negEye[3];
-	vec3d_scalarMult_new(negEye, eye, -1);
-	double translationPart[16];
-	mat4d_translateVec_new(translationPart, negEye);
-
-	/* Multiply the matrices together */
-	mat4d_mult_mat4d_new(result, rotationPart, translationPart);
-}
-
-/** Creates a new lookat matrix (aka viewing transformation) which
- * defines the position and orientation of the virtual camera.
- * For full documentation, see mat4f_lookatVec_new()
- */
-void mat4f_lookat_new(float result[16], float eyeX, float eyeY, float eyeZ, float centerX, float centerY, float centerZ, float upX, float upY, float upZ)
-{
-	float eye[3], center[3], up[3];
-	vec3f_set(eye,       eyeX,    eyeY,    eyeZ);
-	vec3f_set(center, centerX, centerY, centerZ);
-	vec3f_set(up,         upX,     upY,     upZ);
-	mat4f_lookatVec_new(result, eye, center, up);
-}
-/** Creates a new lookat matrix (aka viewing transformation) which
- * defines the position and orientation of the virtual camera.
- * For full documentation, see mat4f_lookatVec_new()
- */
-void mat4d_lookat_new(double result[16], double eyeX, double eyeY, double eyeZ, double centerX, double centerY, double centerZ, double upX, double upY, double upZ)
-{
-	double eye[3], center[3], up[3];
-	vec3d_set(eye,       eyeX,    eyeY,    eyeZ);
-	vec3d_set(center, centerX, centerY, centerZ);
-	vec3d_set(up,         upX,     upY,     upZ);
-	mat4d_lookatVec_new(result, eye, center, up);
-}
-
 
 /** Reads a text file.
  *
@@ -1977,41 +181,20 @@ char* kuhl_text_read(const char *filename)
 
 	/* We add one more character to create room to store a '\0' at the
 	 * end. */
-	char *content = (char*) malloc(sizeof(char)*(contentSpace+1));
+	char *content = (char*) kuhl_malloc(sizeof(char)*(contentSpace+1));
 
 	/* Pointer to where next chunk should be stored */
 	char *contentLoc = content;
 
-	FILE *fp = fopen(filename,"rt");
+	char *newFilename = kuhl_find_file(filename);
+	FILE *fp = fopen(newFilename,"rt");
+	free(newFilename);
 	int readChars;
 
-#ifdef __linux
 	if(fp == NULL)
 	{
-		/* If we can't open the filename directly, then try opening it
-		   with the full path based on the path to the
-		   executable. This allows us to more easily run programs from
-		   outside of the same directory that the executable that the
-		   executable resides without having to specify an absolute
-		   path to our shader programs. */
-		char exe[1024];
-		ssize_t len = readlink("/proc/self/exe", exe, 1023);
-		exe[len]='\0';
-		char *dir = dirname(exe);
-		char newfilename[1024];
-		snprintf(newfilename, 1024, "%s/%s", dir, filename);
-		fp = fopen(newfilename,"rt");
-		if(fp != NULL)
-		{
-			printf("NOTE: %s was not found; using %s\n", filename, newfilename);
-		}
-	}
-#endif
-
-	if(fp == NULL)
-	{
-		fprintf(stderr, "ERROR: Can't open %s\n", filename);
-		exit(1);
+		fprintf(stderr, "ERROR: Can't open %s.\n", filename);
+		exit(EXIT_FAILURE);
 	}
 
 	do
@@ -2110,7 +293,7 @@ void kuhl_print_program_info(GLuint program)
 	/* Attributes */
 	GLint numVarsInProg = 0;
 	glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &numVarsInProg);
-	printf("Active attributes in program %d: ", program);
+	printf("GLSL program %d: Active attributes: ", program);
 	for(int i=0; i<numVarsInProg; i++)
 	{
 		char buf[1024];
@@ -2130,7 +313,7 @@ void kuhl_print_program_info(GLuint program)
 	
 	numVarsInProg = 0;
 	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numVarsInProg);
-	printf("Active uniforms in program %d: ", program);
+	printf("GLSL program %d: Active uniforms: ", program);
 	for(int i=0; i<numVarsInProg; i++)
 	{
 		char buf[1024];
@@ -2149,23 +332,18 @@ void kuhl_print_program_info(GLuint program)
 
 	kuhl_errorcheck();
 	
-	GLint linkStatus=GL_FALSE, validateStatus=GL_FALSE;
 	GLint attachedShaderCount=0;
 	GLint binarySize=0;
 	GLint deleteStatus=GL_FALSE;
 	glGetProgramiv(program, GL_ATTACHED_SHADERS, &attachedShaderCount);
-	glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
-	glGetProgramiv(program, GL_VALIDATE_STATUS, &validateStatus);
 	glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &binarySize);
 	glGetProgramiv(program, GL_DELETE_STATUS, &deleteStatus);
-	printf("LinkStatus=%s ValidateStatus=%s AttachedShaderCount=%d Size=%d %s\n",
-	       linkStatus     == GL_TRUE ? "OK" : "Fail",
-	       validateStatus == GL_TRUE ? "OK" : "Fail",
+	printf("GLSL program %d: AttachedShaderCount=%d Size=%d %s\n",
+	       program,
 	       attachedShaderCount, binarySize,
 	       deleteStatus   == GL_TRUE ? "DELETED!" : "");
 
 	kuhl_errorcheck();
-
 }
 
 /** Detaches shaders from the given GLSL program, deletes the program,
@@ -2219,7 +397,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 		fprintf(stderr, "%s: ERROR: Failed to create program.\n", __func__);
 		exit(1);
 	}
-	printf("Creating program %d from vertex shader (%s) and fragment shader (%s).\n",
+	printf("GLSL program %d: Creating vertex (%s) & fragment (%s) shaders\n",
 	       program, vertexFilename, fragFilename);
 	
 	/* Create the shaders */
@@ -2253,7 +431,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 	 * ready to draw (i.e., have a vertex array object set up, etc). */
 	
 	kuhl_print_program_info(program);
-	printf("GLSL program %d created successfully.\n", program);
+    // printf("GLSL program %d: Success!\n", program);
 	return program;
 }
 
@@ -2333,7 +511,8 @@ GLint kuhl_get_uniform(const char *uniformName)
  *
  * @param attributeName The name of the attribute variable.
  *
- * @return The location of the attribute variable.
+ * @return The location of the attribute variable. Returns -1 if the
+ * attribute is not found.
  */
 GLint kuhl_get_attribute(GLuint program, const char *attributeName)
 {
@@ -2368,73 +547,8 @@ GLint kuhl_get_attribute(GLuint program, const char *attributeName)
 
 
 
-/** Initializes all items in a kuhl_geometry struct to 0.
 
- @param geom The kuhl_geometry struct to be zero'd out.
-*/
-void kuhl_geometry_zero(kuhl_geometry *geom)
-{
-	geom->vao = 0;
-	geom->program = 0;
-	geom->vertex_count = 0;
-	geom->primitive_type = 0;
-
-	for(int i=0; i<6; i++)
-		geom->aabbox[i] = 0;
-
-	geom->texture = 0;
-	geom->texture_name = NULL;
-	
-	geom->indices = NULL;
-	geom->indices_len = 0;
-	geom->indices_bufferobject = 0;
-
-	geom->attrib_pos = NULL;
-	geom->attrib_pos_components = 0;
-	geom->attrib_pos_name = NULL;
-	geom->attrib_pos_bufferobject = 0;
-
-	geom->attrib_color = NULL;
-	geom->attrib_color_components = 0;
-	geom->attrib_color_name = NULL;
-	geom->attrib_color_bufferobject = 0;
-
-	geom->attrib_texcoord = NULL;
-	geom->attrib_texcoord_components = 0;
-	geom->attrib_texcoord_name = NULL;
-	geom->attrib_texcoord_bufferobject = 0;
-	
-	geom->attrib_normal = NULL;
-	geom->attrib_normal_components = 0;
-	geom->attrib_normal_name = NULL;
-	geom->attrib_normal_bufferobject = 0;
-
-	geom->attrib_boneWeight = NULL;
-	geom->attrib_boneWeight_components = 0;
-	geom->attrib_boneWeight_name = NULL;
-	geom->attrib_boneWeight_bufferobject = 0;
-
-	geom->attrib_boneIndex = NULL;
-	geom->attrib_boneIndex_components = 0;
-	geom->attrib_boneIndex_name = NULL;
-	geom->attrib_boneIndex_bufferobject = 0;
-
-	geom->attrib_custom = NULL;
-	geom->attrib_custom_components = 0;
-	geom->attrib_custom_name = NULL;
-	geom->attrib_custom_bufferobject = 0;
-
-	mat4f_identity(geom->matrix);
-	geom->has_been_drawn = 0;
-#ifdef KUHL_UTIL_USE_ASSIMP
-	geom->assimp_node = NULL;
-	geom->assimp_scene = NULL;
-	geom->bones = NULL;
-#endif
-}
-
-
-static void kuhl_geometry_sanity_check_attribute(int components, GLuint bufferobject, const char *attributeName, GLuint program)
+static void kuhl_geometry_sanity_check_attribute(GLuint bufferobject, const char *attributeName, GLuint program)
 {
 
 	GLint attribLoc = -1;
@@ -2444,13 +558,13 @@ static void kuhl_geometry_sanity_check_attribute(int components, GLuint bufferob
 	if(attribLoc != -1) /* If the attribute is actually in the GLSL program */
 	{
 		/* If some part of this attribute is set in kuhl_geometry... */
-		if(attributeName != NULL || bufferobject != 0 || components != 0)
+		if(attributeName != NULL || bufferobject != 0)
 		{
 			/* All parts of this attribute should be set */
-			if(attributeName == NULL || bufferobject == 0 || components == 0)
+			if(attributeName == NULL || bufferobject == 0)
 			{
-				fprintf(stderr, "%s: Only part of the attribute was set: Name=%s bufferobject=%d components=%d\n",
-				        __func__, attributeName, bufferobject, components);
+				fprintf(stderr, "%s: Only part of the attribute was set: Name=%s bufferobject=%d\n",
+				        __func__, attributeName, bufferobject);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -2529,34 +643,12 @@ static void kuhl_geometry_sanity_check(kuhl_geometry *geom)
 		exit(EXIT_FAILURE);
 	}
 
-	kuhl_geometry_sanity_check_attribute(geom->attrib_pos_components,
-	                                     geom->attrib_pos_bufferobject,
-	                                     geom->attrib_pos_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_color_components,
-	                                     geom->attrib_color_bufferobject,
-	                                     geom->attrib_color_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_texcoord_components,
-	                                     geom->attrib_texcoord_bufferobject,
-	                                     geom->attrib_texcoord_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_normal_components,
-	                                     geom->attrib_normal_bufferobject,
-	                                     geom->attrib_normal_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_boneWeight_components,
-	                                     geom->attrib_boneWeight_bufferobject,
-	                                     geom->attrib_boneWeight_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_boneIndex_components,
-	                                     geom->attrib_boneIndex_bufferobject,
-	                                     geom->attrib_boneIndex_name,
-	                                     geom->program);
-	kuhl_geometry_sanity_check_attribute(geom->attrib_custom_components,
-	                                     geom->attrib_custom_bufferobject,
-	                                     geom->attrib_custom_name,
-	                                     geom->program);
+	for(unsigned int i=0; i<geom->attrib_count; i++)
+	{
+		kuhl_geometry_sanity_check_attribute(geom->attribs[i].bufferobject,
+		                                     geom->attribs[i].name,
+		                                     geom->program);
+	}
 }
 
 
@@ -2612,7 +704,7 @@ void kuhl_bbox_transform(float bbox[6], float mat[16])
 }
     
 
-
+#if 0
 /** Checks if the axis-aligned bounding box of two kuhl_geometry objects intersect.
 
     @return 1 if the bounding boxes intersect; 0 otherwise
@@ -2652,24 +744,425 @@ int kuhl_geometry_collide(kuhl_geometry *geom1, float mat1[16],
 	if(box1[zmax] < box2[zmin]) return 0;
 	return 1;
 }
+#endif
+
+
+/** Adds a texture to the provided kuhl_geometry object.
+ *
+ * @param geom The geometry object to add a texture to.
+ *
+ * @param texture The OpenGL texture ID of the texture.
+ *
+ * @param name The GLSL variable name that the texture should be connected to.
+ *
+ * @param kg_options If KG_WARN bit is set, will warn if
+ * the GLSL variable is missing from the GLSL program for this piece
+ * of geometry. If set to KG_FULL_LIST is set, the texture will
+ * be applied to all of the geometry in this list. */
+ 
+void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name, int kg_options)
+{
+	if(name == NULL || strlen(name) == 0)
+	{
+		printf("%s: WARNING: GLSL variable name was NULL or the empty string.\n",
+		       __func__);
+		return;
+	}
+	if(geom == NULL)
+	{
+		printf("%s: WARNING: Geometry struct is null while trying to set texture %s.\n",
+		       __func__, name);
+		return;
+	}
+	if(texture == 0)
+	{
+		printf("%s: WARNING: Texture was set to 0 while trying to set texture %s\n",
+		       __func__, name);
+		return;
+	}
+	if(!glIsTexture(texture))
+	{
+		printf("%s: WARNING: You tried to set the texture to an invalid texture %d (detected while trying to set texture %s)\n", __func__, texture, name);
+		return;
+	}
+
+	if(kg_options & KG_FULL_LIST && geom->next != NULL)
+		kuhl_geometry_texture(geom->next, texture, name, kg_options);
+	
+	if(!glIsVertexArray(geom->vao))
+	{
+		printf("%s: WARNING: This geometry object has an invalid vertex array object %d (detected while setting texture %s)\n", __func__, geom->vao, name);
+		return;
+	}
+	
+	/* If this attribute isn't available in the GLSL program, move
+	 * on to the next one. */
+	GLint samplerLocation = glGetUniformLocation(geom->program, name);
+	if(samplerLocation == -1)
+	{
+		if(kg_options & KG_WARN)
+			printf("%s: WARNING: Texture sampler '%s' was missing in GLSL program %d.\n", __func__, name, geom->program);
+		return;
+	}
+
+	/* If another attribute in kuhl_geometry has the same name,
+	 * overwrite it. */
+	unsigned int destIndex = geom->texture_count;
+	for(unsigned int i=0; i<geom->texture_count; i++)
+	{
+		if(strcmp(name, geom->textures[i].name) == 0)
+			destIndex = i;
+	}
+	/* If overwriting, free resources from old attribute. */
+	if(destIndex < geom->texture_count)
+	{
+		free(geom->textures[destIndex].name);
+		/* Don't free texture since multiple kuhl_geometry objects may
+		 * be using the same texture. */
+	}
+	/* Increment attribute count if necessary. */
+	if(destIndex == geom->texture_count)
+		geom->texture_count++;
+	
+	/* If we are writing past the end of the array. */
+	if(destIndex == MAX_TEXTURES)
+	{
+		fprintf(stderr, "%s: You tried to add more than %d textures to a kuhl_geometry object\n",
+		        __func__, MAX_TEXTURES);
+		exit(EXIT_FAILURE);
+	}
+
+	geom->textures[destIndex].name = strdup(name);
+	geom->textures[destIndex].textureId = texture;
+}
 
 
 
-/** Creates an OpenGL vertex array object from information in a
-    kuhl_geometry struct. When this function successfully completes,
-    the arrays of data stored in the kuhl_geometry struct can be freed
-    (for example, geom->attrib_pos, geom->attrib_color, geom->indices,
-    etc.) because OpenGL has made its own copy of the data. The rest
-    of the information in the struct should be left untouched by the
-    caller, since they may be used in kuhl_geometry_draw().
+/** Finds the index of a kuhl_attrib stored inside of a kuhl_geometry
+ * by GLSL variable name.
+ *
+ * @param geom The geometry object to search.
+ *
+ * @param name The GLSL variable name of the attribute that you are
+ * looking for.
+ *
+ * @return The index into geom->attribs[] array of the
+ * attribute. Returns -1 if the attribute was not found.
+ */
+int kuhl_geometry_attrib_index(kuhl_geometry *geom, const char *name)
+{
+	if(geom == NULL || name == NULL)
+		return -1;
+	for(unsigned int i=0; i<geom->attrib_count; i++)
+	{
+		if(strcmp(name, geom->attribs[i].name) == 0)
+			return (int) i;
+	}
+	return -1;
+}
 
-    This function also examines the vertices and calculates an
-    axis-aligned bounding box (in object coordinates).
+/** Retrieves vertex attribute information stored in an OpenGL array
+ * buffer.
+ *
+ * @param geom The geometry object containing the attribute that you
+ * want to retrieve.
+ *
+ * @param name The GLSL variable name of the attribute that you are
+ * interested in.
+ *
+ * @param size A pointer to an integer that will be filled in with the
+ * length of the data retrieved.
+ *
+ * @return A pointer to a array of floats which contains all of
+ * per-vertex data for this attribute. Any changes you make to the
+ * array will automatically be propagated back to OpenGL before the
+ * next time the geometry is drawn. The array should NOT be
+ * free()'d. It also should NOT be accessed after the geometry is
+ * drawn. If you want to continue to access the data, you should call
+ * kuhl_geometry_attrib_get() every frame. If you aren't changing the
+ * data but still want access to it, it is best to make a copy of the
+ * array that kuhl_geometry_attrib_get() returns instead of calling it
+ * every single frame to retrieve the same data repeatedly.
+ */
+GLfloat* kuhl_geometry_attrib_get(kuhl_geometry *geom, const char *name, GLint *size)
+{
+	if(size != NULL)
+		*size = 0;
+
+	if(geom == NULL || name == NULL || size == NULL)
+		return NULL;
+
+	int index = kuhl_geometry_attrib_index(geom, name);
+	if(index < 0)
+		return NULL;
+
+	/* Bind the VAO and the buffer we are interested in */
+	kuhl_attrib *attrib = &(geom->attribs[index]);
+	if(!glIsBuffer(attrib->bufferobject) || !glIsVertexArray(geom->vao))
+		return NULL;
+	glBindVertexArray(geom->vao);
+	glBindBuffer(GL_ARRAY_BUFFER, attrib->bufferobject);
+	kuhl_errorcheck();
+
+	/* Get the size of the buffer */
+	GLint bufferSize = 0;
+	glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufferSize);
+	GLint bufferNumFloats = bufferSize / sizeof(GLfloat);
+
+	/* Get a pointer to the memory-mapped array (but first check if
+	 * the buffer is already mapped. */
+	GLfloat *ret;
+	glGetBufferPointerv(GL_ARRAY_BUFFER, GL_BUFFER_MAP_POINTER, (void**) &ret);
+	if(ret == NULL) /* If buffer is not already mapped */
+		ret = (GLfloat*) glMapBuffer(GL_ARRAY_BUFFER, GL_READ_WRITE);
+
+	/* NOTE: We will unmap any buffer that needs unmapping in
+	 * kuhl_geometry_draw() before we draw. */
+	kuhl_errorcheck();
+	if(ret == NULL)
+		return NULL;
+	*size = bufferNumFloats;
+
+	// unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	kuhl_errorcheck();
+
+	return ret;
+}
+
+/** Changes the GLSL program that is used by a kuhl_geometry object.
+ *
+ * @param geom A geometry that you want to change the GLSL program for.
+ *
+ * @param program The new GLSL program you wish to use with the geometry.
+ *
+ * @param kg_options Set this to KG_FULL_LIST to apply the new program
+ * to all geometries in the kuhl_geometry linked list. Otherwise, set
+ * to 0.
+ */
+void kuhl_geometry_program(kuhl_geometry *geom, GLuint program, int kg_options)
+{
+	if(geom == NULL)
+		return;
+
+	if(kg_options & KG_FULL_LIST)
+		kuhl_geometry_program(geom->next, program, kg_options);
+
+	// If the caller deleted their old program and created a new one,
+	// the new program ID might match the old program ID. Therefore,
+	// we can't rely on the program IDs to verify that the user
+	// changed the program.
+
+	if(!glIsProgram(program))
+	{
+		printf("%s: WARNING: GLSL program %d is not a valid program.\n",
+		       __func__, program);
+	}
+	
+	geom->program = program;
+	
+	glBindVertexArray(geom->vao);
+	for(unsigned int i=0; i<geom->attrib_count; i++)
+	{
+		kuhl_attrib *attrib = &(geom->attribs[i]);
+		glBindBuffer(GL_ARRAY_BUFFER, attrib->bufferobject);
+		kuhl_errorcheck();
+
+		GLint attribLocation = kuhl_get_attribute(geom->program, attrib->name);
+		glEnableVertexAttribArray(attribLocation);
+
+		/* Get the size of the buffer */
+		GLint bufferSize = 0;
+		glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &bufferSize);
+		GLint bufferNumFloats = bufferSize/sizeof(GLfloat);
+		GLint components = bufferNumFloats / geom->vertex_count;
+
+		/* Connect this vertex attribute with the (possibly different)
+		 * attribute location. */
+		glVertexAttribPointer(
+			attribLocation, // attribute location in glsl program
+			components, // number of elements (x,y,z)
+			GL_FLOAT, // type of each element
+			GL_FALSE, // should OpenGL normalize values?
+			0,        // no extra data between each position
+			0 );      // offset of first element
+		kuhl_errorcheck();
+	}
+
+	/* NOTE: We do not have to update the uniform locations because
+	 * they are determined in kuhl_geometry_draw() */
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+
+/** Adds a vertex attribute (such as vertex position, normal, color,
+ * texture coordinate, etc) to the geometry object.
+ *
+ * @param geom The geometry to add the attribute to.
+ *
+ * @param data An array of floats that contains the attribute
+ * data. This array should contain geom->vertex_count * components
+ * floats.
+ *
+ * @param components The number of floats per vertex in this attribute.
+ *
+ * @param name The GLSL variable name that this attribute should be
+ * connected to.
+ *
+ * @param warnIfAttribMissing If nonzero, print a warning if the
+ * attribute isn't present in the GLSL program for this geometry
+ * object.
+ */
+void kuhl_geometry_attrib(kuhl_geometry *geom, const GLfloat *data, GLuint components, const char* name, int warnIfAttribMissing)
+{
+	if(name == NULL || strlen(name) == 0)
+	{
+		printf("%s: WARNING: GLSL variable name was NULL or the empty string.\n",
+		       __func__);
+		return;
+	}
+	if(geom == NULL)
+	{
+		printf("%s: WARNING: Geometry struct is null while trying to set attribute %s.\n",
+		       __func__, name);
+		return;
+	}
+	if(data == NULL)
+	{
+		printf("%s: WARNING: data array is null while trying to set attribute %s.\n",
+		       __func__, name);
+		return;
+	}
+	if(components == 0)
+	{
+		printf("%s: WARNING: Components was 0 while trying to set attribute %s.\n",
+		       __func__, name);
+		return;
+	}
+	if(!glIsVertexArray(geom->vao))
+	{
+		printf("%s: WARNING: This geometry object has an invalid vertex array object %d (detected while setting attribute %s)\n", __func__, geom->vao, name);
+		return;
+	}
+
+	/* If this attribute isn't available in the GLSL program, move
+	 * on to the next one. */
+	GLint attribLocation = kuhl_get_attribute(geom->program, name);
+	if(attribLocation == -1)
+	{
+		if(warnIfAttribMissing)
+			printf("%s: WARNING: Attribute '%s' was missing in geometry object.\n",
+			       __func__, name);
+		return;
+	}
+
+	/* If another attribute in kuhl_geometry has the same name,
+	 * overwrite it. */
+	int destIndex = kuhl_geometry_attrib_index(geom, name);
+
+	if(destIndex < 0)
+	{
+		/* If this is a new attribute for this geometry object */
+		destIndex = geom->attrib_count;
+		geom->attrib_count++;
+	}
+	else
+	{
+		/* If overwriting, free resources from old attribute. */
+		free(geom->attribs[destIndex].name);
+		if(glIsBuffer(geom->attribs[destIndex].bufferobject))
+			glDeleteBuffers(1, &(geom->attribs[destIndex].bufferobject));
+	}
+//	printf("%s: Storing attribute %s at index %d in kuhl_geometry; connected to location %d in program %d\n", __func__, name, destIndex, attribLocation, geom->program);
+	
+	/* If we are writing past the end of the array. */
+	if(destIndex == MAX_ATTRIBUTES)
+	{
+		fprintf(stderr, "%s: You tried to add more than %d attributes to a kuhl_geometry object\n",
+		        __func__, MAX_ATTRIBUTES);
+		exit(EXIT_FAILURE);
+	}
+
+	/* Set up this attribute. */
+	kuhl_attrib *attrib = &(geom->attribs[destIndex]);
+	attrib->name = strdup(name);
+
+	/* Switch to our vertex array object. */
+	glBindVertexArray(geom->vao);
+
+	/* Enable this attribute location for this vertex array object. */
+	glEnableVertexAttribArray(attribLocation);
+	
+	/* Ask OpenGL for one new buffer "name" (or ID number). */
+	glGenBuffers(1, &(attrib->bufferobject));
+	/* Tell OpenGL that we are going to use this buffer until we
+	 * say otherwise. GL_ARRAY_BUFFER basically means that the
+	 * data stored in this buffer will be an array containing
+	 * vertex information. */
+	glBindBuffer(GL_ARRAY_BUFFER, attrib->bufferobject);
+	kuhl_errorcheck();
+
+	/* Copy our data into the buffer object that is currently bound. */
+	glBufferData(GL_ARRAY_BUFFER,
+	             sizeof(GLfloat)*geom->vertex_count*components,
+	             data, GL_STATIC_DRAW);
+	kuhl_errorcheck();
+
+	/* Tell OpenGL some information about the data that is in the
+	 * buffer. Among other things, we need to tell OpenGL which
+	 * attribute number (i.e., variable) the data should correspond to
+	 * in the vertex program. */
+	glVertexAttribPointer(
+		attribLocation, // attribute location in glsl program
+		components, // number of elements (x,y,z)
+		GL_FLOAT, // type of each element
+		GL_FALSE, // should OpenGL normalize values?
+		0,        // no extra data between each position
+		0 );      // offset of first element
+	kuhl_errorcheck();
+
+	// unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+/** Calculates the number of objects in the kuhl_geometry linked list.
+
+    @param geom The geometry object which you want to know the length of.
+
+    @return The number of geometry objects in the list.
+*/
+unsigned int kuhl_geometry_count(const kuhl_geometry *geom)
+{
+	if(geom == NULL)
+		return 0;
+	const kuhl_geometry *g = geom;
+	unsigned int count = 1;
+	while(g->next != NULL)
+	{
+		count++;
+		g = g->next;
+	}
+	return count;
+}
+
+
+/** Initializes the vertex array object (VAO) associated with this
+    kuhl_geometry and initializes other variables inside of the struct.
 
     @param geom A kuhl_geometry struct populated with the information
     necessary to draw some geometry.
+
+    @param program A GLSL program to be used when rendering this
+    geometry.
+
+    @param vertexCount The number of vertices in this piece of geometry.
+
+    @param primitive_type OpenGL primitive type of the geometry.
 */
-void kuhl_geometry_init(kuhl_geometry *geom)
+void kuhl_geometry_new(kuhl_geometry *geom, GLuint program, unsigned int vertexCount, GLint primitive_type)
 {
 	kuhl_errorcheck();
 
@@ -2677,10 +1170,111 @@ void kuhl_geometry_init(kuhl_geometry *geom)
 	 * integer that you can think of as an ID number) that we can use
 	 * for a new VAO (vertex array object) */
 	glGenVertexArrays(1, &(geom->vao));
-	/* Tell OpenGL that we are going to be using our new VAO until we
-	 * tell it otherwise with glBindVertexArray(0) */
+	/* Bind to the VAO to finish creating it */
 	glBindVertexArray(geom->vao);
+	glBindVertexArray(0); // unbind
+
+	/* Check if the program is valid (we don't need to enable it here). */
+	if(!glIsProgram(program))
+	{
+		fprintf(stderr, "%s: ERROR: The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", __func__, geom->program);
+		exit(EXIT_FAILURE);
+	}
+
+	if(vertexCount == 0)
+	{
+		fprintf(stderr, "%s: WARNING: You are creating a geometry object with a vertexCount of 0.\n", __func__);
+	}
+
+	geom->program = program;
+	geom->vertex_count = vertexCount;
+	geom->primitive_type = primitive_type;
+
+	geom->attrib_count = 0;
+	geom->texture_count = 0;
+
+	geom->indices = NULL;
+	geom->indices_len = 0;
+	geom->indices_bufferobject = 0;
+
+	mat4f_identity(geom->matrix);
+	geom->has_been_drawn = 0;
+	
+#if KUHL_UTIL_USE_ASSIMP
+	geom->assimp_node  = NULL;
+	geom->assimp_scene = NULL;
+	geom->bones        = NULL;
+#endif
+
+	geom->next = NULL;
+}
+
+/** Applies a set of indices to the geometry so that vertices can be
+ * re-used by multiple triangles or lines.
+ *
+ * @param geom The geometry that the indices should be used with.
+ *
+ * @param indicies A list of indices. Each index refers to a specific vertex.
+ *
+ * @param indexCount The number of indices. For example, if the
+ * geometry object consists of triangles, indexCount should be
+ * numTriangles*3.
+*/
+void kuhl_geometry_indices(kuhl_geometry *geom, GLuint *indices, GLuint indexCount)
+{
+	if(indexCount == 0 || indices == NULL)
+	{
+		printf("%s: WARNING: indexCount was zero or indices array was NULL\n", __func__);
+		return;
+	}
+
+	if(geom->primitive_type == GL_TRIANGLES && indexCount % 3 != 0)
+	{
+		printf("%s: ERROR: indexCount=%u was not a multiple of 3 even though this geometry has triangles in it.", __func__, indexCount);
+		exit(EXIT_FAILURE);
+	}
+	else if(geom->primitive_type == GL_LINES && indexCount % 2 != 0)
+	{
+		printf("%s: ERROR: indexCount=%u was not a multiple of 2 even though this geometry has lines in it.", __func__, indexCount);
+		exit(EXIT_FAILURE);
+	}
+	
+	geom->indices_len = indexCount;
+	geom->indices     = indices;
+
+	/* Verify that the indices the user passed in are
+	 * appropriate. If there are only 10 vertices, then a user
+	 * can't draw a vertex at index 10, 11, 13, etc. */
+	for(GLuint i=0; i<geom->indices_len; i++)
+	{
+		if(geom->indices[i] >= geom->vertex_count)
+			fprintf(stderr, "%s: kuhl_geometry has %d vertices but indices[%d] is asking for vertex at index %d to be drawn.\n", __func__, geom->vertex_count, i, geom->indices[i]);
+	}
+
+	/* Enable VAO */
+	glBindVertexArray(geom->vao);
+		
+	/* Set up a buffer object (BO) which is a place to store the
+	 * *indices* on the graphics card. */
+	glGenBuffers(1, &(geom->indices_bufferobject));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geom->indices_bufferobject);
 	kuhl_errorcheck();
+
+	/* Copy the indices data into the currently bound buffer. */
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*geom->indices_len,
+	             geom->indices, GL_STATIC_DRAW);
+	kuhl_errorcheck();
+	// Don't unbind GL_ELEMENT_ARRAY_BUFFER since the VAO keeps track of this for us.
+
+	// unbind vao
+	glBindVertexArray(0);
+}
+
+
+
+#if 0
+void kuhl_geometry_init(kuhl_geometry *geom)
+{
 
 	/* Calculate the bounding box. */
 	for(int i=0; i<6; i=i+2) // set min values to the largest float
@@ -2706,145 +1300,22 @@ void kuhl_geometry_init(kuhl_geometry *geom)
 			geom->aabbox[5] = geom->attrib_pos[i*3+2];
 	}
 
-	/* The position, texcoord, color, normal, etc. can all be
-	 * processed in the same way. Make some arrays so we can just loop
-	 * through them. */
-	GLfloat *data[] =    { geom->attrib_pos,
-	                       geom->attrib_color,
-	                       geom->attrib_texcoord,
-	                       geom->attrib_normal,
-	                       geom->attrib_boneWeight,
-	                       geom->attrib_boneIndex,
-	                       geom->attrib_custom };
-	GLint components[] = { geom->attrib_pos_components,
-	                       geom->attrib_color_components,
-	                       geom->attrib_texcoord_components,
-	                       geom->attrib_normal_components,
-	                       geom->attrib_boneWeight_components,
-	                       geom->attrib_boneIndex_components,
-	                       geom->attrib_custom_components };
-	char *name[]       = { geom->attrib_pos_name,
-	                       geom->attrib_color_name,
-	                       geom->attrib_texcoord_name,
-	                       geom->attrib_normal_name,
-	                       geom->attrib_boneWeight_name,
-	                       geom->attrib_boneIndex_name,
-	                       geom->attrib_custom_name };
-	GLuint bo[]        = { geom->attrib_pos_bufferobject,
-	                       geom->attrib_color_bufferobject,
-	                       geom->attrib_texcoord_bufferobject,
-	                       geom->attrib_normal_bufferobject,
-	                       geom->attrib_boneWeight_bufferobject,
-	                       geom->attrib_boneIndex_bufferobject,
-	                       geom->attrib_custom_bufferobject };
-
-	/* Check if the program is valid (we don't need to enable it here). */
-	if(!glIsProgram(geom->program))
-	{
-		fprintf(stderr, "%s: The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", __func__, geom->program);
-		exit(EXIT_FAILURE);
-	}
-
-	/* A vertex array object consists of multiple buffers that contain
-	 * per-vertex information like positions, colors, normals, texture
-	 * coordinates, etc. A group of buffers can be associated with a
-	 * single VAO. Here, we iterate through all of the possible vertex
-	 * attributes in kuhl_geometry and create VAO buffers for them. */
-	for(int i=0; i<7; i++)
-	{
-		/* If this attribute doesn't contain any meaningful data, move
-		 * on to the next one. */
-		if(data[i] == 0 || components[i] == 0 || name[i] == NULL || strlen(name[i]) == 0)
-			continue;
-
-		/* If this attribute isn't available in the GLSL program, move
-		 * on to the next one. */
-		GLint attribLocation = kuhl_get_attribute(geom->program, name[i]);
-		if(attribLocation == -1)
-			continue;
-
-		/* Enable this attribute location */
-		glEnableVertexAttribArray(attribLocation);
-		
-		/* Ask OpenGL for one new buffer "name" (or ID number). */
-		glGenBuffers(1, &(bo[i]));
-		/* Tell OpenGL that we are going to use this buffer until we
-		 * say otherwise. GL_ARRAY_BUFFER basically means that the
-		 * data stored in this buffer will be an array containing
-		 * vertex information. */
-		glBindBuffer(GL_ARRAY_BUFFER, bo[i]);
-		kuhl_errorcheck();
-
-		/* Copy our data into the buffer object that is currently bound. */
-		glBufferData(GL_ARRAY_BUFFER,
-		             sizeof(GLfloat)*geom->vertex_count*components[i],
-		             data[i], GL_STATIC_DRAW);
-		kuhl_errorcheck();
-
-		/* Tell OpenGL some information about the data that is in the
-		 * buffer. Among other things, we need to tell OpenGL which
-		 * attribute number (i.e., variable) the data should correspond to
-		 * in the vertex program. */
-
-		glVertexAttribPointer(
-			attribLocation, // attribute location in glsl program
-			components[i], // number of elements (x,y,z)
-			GL_FLOAT, // type of each element
-			GL_FALSE, // should OpenGL normalize values?
-			0,        // no extra data between each position
-			0 );      // offset of first element
-		kuhl_errorcheck();
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind
-	} /* end for each vertex attribute in kuhl_geometry */
-
-	/* Make sure that the bufferobject names get copied back into the
-	 * struct that the user passed in to this function. */
-	geom->attrib_pos_bufferobject       = bo[0];
-	geom->attrib_color_bufferobject     = bo[1];
-	geom->attrib_texcoord_bufferobject  = bo[2];
-	geom->attrib_normal_bufferobject    = bo[3];
-	geom->attrib_boneWeight_bufferobject= bo[4];
-	geom->attrib_boneIndex_bufferobject = bo[5];
-	geom->attrib_custom_bufferobject    = bo[6];
-
-	if(geom->indices != NULL && geom->indices_len > 0)
-	{
-		/* Verify that the indices the user passed in are
-		 * appropriate. If there are only 10 vertices, then a user
-		 * can't draw a vertex at index 10, 11, 13, etc. */
-		for(GLuint i=0; i<geom->indices_len; i++)
-		{
-			if(geom->indices[i] >= geom->vertex_count)
-				fprintf(stderr, "%s: kuhl_geometry has %d vertices but indices[%d] is asking for vertex at index %d to be drawn.\n", __func__, geom->vertex_count, i, geom->indices[i]);
-		}
-
-		/* Set up a buffer object (BO) which is a place to store the
-		 * *indices* on the graphics card. */
-		glGenBuffers(1, &(geom->indices_bufferobject));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geom->indices_bufferobject);
-		kuhl_errorcheck();
-
-		/* Copy the indices data into the currently bound buffer. */
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*geom->indices_len, geom->indices, GL_STATIC_DRAW);
-		kuhl_errorcheck();
-		// Don't unbind GL_ELEMENT_ARRAY_BUFFER since the VAO keeps track of this for us.
-	}
-	kuhl_geometry_sanity_check(geom);
-	
-    /* Unbind VAO. In the future, we can bind the vertex array object
-     * that we created and to easily recall all of the position,
-     * normal, color, texture coordinate, etc. information. */
-	glBindVertexArray(0);
 }
+#endif
 
 /** Draws a kuhl_geometry struct to the screen. The struct passed into
- * this function should have been set up with kuhl_geometry_init()
- * first!
+ * this function should have been set up with kuhl_geometry_new() and
+ * at least one position attribute with kuhl_geometry_attrib() before
+ * calling this function.
 
- @param geom The geometry to draw to the screen. */
+ @param geom The geometry to draw to the screen. If the kuhl_geometry
+ object is a part of a linked list, this function will draw each of
+ the objects in order. */
 void kuhl_geometry_draw(kuhl_geometry *geom)
 {
+	if(geom == NULL)
+		return;
+	
 	kuhl_errorcheck();
 	
 	/* Record the OpenGL state so that we can restore it when we have
@@ -2857,16 +1328,12 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 	glGetIntegerv(GL_ACTIVE_TEXTURE, &previouslyActiveTexture);
 	GLint previousVAO=0;
 	glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previousVAO);
-	
 
 	/* Check that there is a valid program and VAO object for us to use. */
 	if(glIsProgram(geom->program) == 0 || glIsVertexArray(geom->vao) == 0)
 	{
 		fprintf(stderr, "%s: Program (%d) or vertex array object (%d) were invalid\n",
 		        __func__, geom->program, geom->vao);
-		// restore GLSL program and VAO
-		glUseProgram(previouslyUsedProgram);
-		glBindVertexArray(previousVAO);
 		kuhl_errorcheck();
 		return;
 	}
@@ -2874,40 +1341,48 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 	glUseProgram(geom->program);
 	kuhl_errorcheck();
 
-	/* If the user specified a valid OpenGL texture, use it. */
-	if(glIsTexture(geom->texture))
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
+	/* For each texture */
+	int hasTex = 0;
+	for(unsigned int i=0; i<geom->texture_count; i++)
 	{
+		kuhl_texture *tex = &(geom->textures[i]);
+		if(!glIsTexture(tex->textureId))
+			continue;
+
 		/* Check if the sampler variable is available in the GLSL
 		 * program. If not, don't send the texture. */
-		GLint loc = glGetUniformLocation(geom->program, geom->texture_name);
-		if(loc != -1)
-		{
-			/* Tell OpenGL that the texture that we refer to in our
-			 * GLSL program is going to be in texture unit 0.
-			 */
-			glUniform1i(kuhl_get_uniform(geom->texture_name), 0);
-			kuhl_errorcheck();
-			/* Turn on texture unit 0 */
-			glActiveTexture(GL_TEXTURE0); 
-			kuhl_errorcheck();
-			/* Bind the texture that we want to use while the correct
-			 * texture unit is enabled. */
-			glBindTexture(GL_TEXTURE_2D, geom->texture); 
-			kuhl_errorcheck();
-		}
+		GLint loc = glGetUniformLocation(geom->program, tex->name);
+		if(loc == -1)
+			continue;
+
+		if(strcmp(tex->name, "tex") == 0)
+			hasTex = 1;
+		
+		/* Tell OpenGL that the texture that we refer to in our
+		 * GLSL program is going to be in texture unit number 'i'.
+		 */
+		glUniform1i(loc, i);
+		kuhl_errorcheck();
+		/* Turn on appropriate texture unit */
+		glActiveTexture(GL_TEXTURE0+i);
+		kuhl_errorcheck();
+		/* Bind the texture that we want to use while the correct
+		 * texture unit is enabled. */
+		glBindTexture(GL_TEXTURE_2D, tex->textureId);
+		kuhl_errorcheck();
 	}
-	else
-		/* Make sure that we don't draw a texture if there wasn't one
-		 * specified in kuhl_geometry. Without this, it is possible
-		 * that there is some texture that is currently bound that we
-		 * would use. */
-		glBindTexture(GL_TEXTURE_2D, 0);
+
+	GLint loc;
+	loc = glGetUniformLocation(geom->program, "HasTex");
+	if(loc != -1)
+	    glUniform1i(loc, hasTex);
 
 	/* Try to set uniform variables if they are active in the current
 	 * GLSL program. If they are not active, don't print any warning
 	 * messages. */
 	int numBones = 0;
-	GLint loc;
 #ifdef KUHL_UTIL_USE_ASSIMP
 	loc = glGetUniformLocation(geom->program, "BoneMat");
 	if(loc != -1 && geom->bones)
@@ -2934,9 +1409,11 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 		if(sum > 0.00001 && geom->has_been_drawn == 0)
 		{
 			printf("\n\n");
-			printf("ERROR: You must include a 'uniform mat4 GeomTransform' variable in your GLSL shader when you load/display a model with kuhl-util. This matrix should be applied to the vertices in your model before you multiply by your modelview matrix in the vertex program. For example:\n\ngl_Position = Projection * ModelView * GeomTransform * in_Position\n\n");
+			printf("ERROR: You must include a 'uniform mat4 GeomTransform' variable in your GLSL shader (program %d) when you load/display a model with kuhl-util. This matrix should be applied to the vertices in your model before you multiply by your modelview matrix in the vertex program. For example:\n\ngl_Position = Projection * ModelView * GeomTransform * in_Position\n\n", geom->program);
 			printf("This matrix is required to correctly translate/rotate/scale your geometry and is also used by some models to implement animation. This matrix is stored inside of a variable called 'matrix' in kuhl_geometry and is set to the identity matrix by default. This message only gets printed if you are using something that actually sets the matrix to something other than the identity. Earlier versions of this software simply transformed the vertices as the file was being loaded instead of doing it in the vertex program.\n");
 			printf("\n");
+			printf("We would set the GeomTransform to:\n");
+			mat4f_print(geom->matrix);
 			printf("This program will resume running in 2 seconds...\n");
 			sleep(2);
 			printf("...continuing despite the missing variable.\n");
@@ -2947,6 +1424,22 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 	glBindVertexArray(geom->vao);
 	kuhl_errorcheck();
 
+	/* kuhl_geometry_attrib_get() allows vertex attribute buffers to
+	 * be mapped. Here, we check if the buffers are mapped. If they
+	 * are, we unmap them before we draw the geometry. */
+	for(unsigned int i=0; i<geom->attrib_count; i++)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, geom->attribs[i].bufferobject);
+		GLint bufferIsMapped = 0;
+		glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_MAPPED, &bufferIsMapped);
+		kuhl_errorcheck();
+		if(bufferIsMapped)
+			glUnmapBuffer(GL_ARRAY_BUFFER);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		kuhl_errorcheck();
+	}
+
+	
 	/* If the user provided us with indices, use glDrawElements() to
 	 * draw the geometry. */
 	if(geom->indices_len > 0 && glIsBuffer(geom->indices_bufferobject))
@@ -2982,11 +1475,15 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 	/* Unbind the VAO */
 	glBindVertexArray(previousVAO);
 	kuhl_errorcheck();
+
+	/* Draw the next nodes in the list. */
+	kuhl_geometry_draw(geom->next);
 }
 
 /** Deletes kuhl_geometry struct by freeing the OpenGL buffers that
- * kuhl_geometry_init() created. Call kuhl_geometry_zero() to zero out
- * all elements within kuhl_geometry.
+ * may have been created by kuhl_geometry_attrib() and
+ * kuhl_geometry_indices(). It also frees the vertex array object in
+ * kuhl_geometry.
  *
  * Important note: kuhl_geometry_init() does not allocate space for
  * textures---so kuhl_geometry_delete() does not delete textures! This
@@ -2997,22 +1494,30 @@ void kuhl_geometry_draw(kuhl_geometry *geom)
 */
 void kuhl_geometry_delete(kuhl_geometry *geom)
 {
-	/* Delete the associated buffer objects */
-	GLuint *bos[] = { &(geom->attrib_pos_bufferobject),
-	                  &(geom->attrib_color_bufferobject),
-	                  &(geom->attrib_texcoord_bufferobject),
-	                  &(geom->attrib_normal_bufferobject),
-	                  &(geom->attrib_custom_bufferobject) };
-	for(int i=0; i<5; i++)
+	while(geom->next != NULL)
+		kuhl_geometry_delete(geom->next);
+	
+	for(unsigned int i=0; i<geom->attrib_count; i++)
 	{
-		if(glIsBuffer(*(bos[i])))
-			glDeleteBuffers(1, bos[i]);
-		// Make sure we set bufferobjects to 0 in case someone tries to draw this geometry.
-		*bos[i] = 0;
+		kuhl_attrib *attrib = &(geom->attribs[i]);
+		if(attrib->name)
+			free(attrib->name);
+		attrib->name = NULL;
+		if(glIsBuffer(attrib->bufferobject))
+			glDeleteBuffers(1, &(attrib->bufferobject));
+		attrib->bufferobject = 0;
 	}
+	geom->attrib_count = 0;
+
+	if(glIsBuffer(geom->indices_bufferobject))
+		glDeleteBuffers(1, &(geom->indices_bufferobject));
+	geom->indices_bufferobject = 0;
+	geom->indices_len = 0;
+	
 	if(glIsVertexArray(geom->vao))
 		glDeleteVertexArrays(1, &(geom->vao));
 	geom->vao = 0;
+	geom->has_been_drawn = 0;
 }
 
 
@@ -3142,7 +1647,10 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
  *
  * @param label The text that you want to render.
  *
- * @param texName A pointer that will be filled with the OpenGL texture name for the new texture.
+ * @param texName A pointer that will be filled with the OpenGL
+ * texture name for the new texture. When you are done with this
+ * label, you are responsible for telling OpenGL to delete it with
+ * glDeleteTextures(1, &texName).
  *
  * @param color The color of the text.
  *
@@ -3155,7 +1663,7 @@ float kuhl_make_label(const char *label, GLuint *texName, float color[3], float 
 {
 	int width = 0;
 	int height = 0;
-	char *image = image_label(label, &width, &height, color, bgcolor, 10);
+	char *image = image_label(label, &width, &height, color, bgcolor, pointsize);
 //	printf("Label texture dimensions: %d %d\n", width, height);
 	*texName = kuhl_read_texture_rgba_array(image, width, height);
 	free(image);
@@ -3185,6 +1693,8 @@ float kuhl_make_label(const char *label, GLuint *texName, float color[3], float 
  */
 float kuhl_read_texture_file(const char *filename, GLuint *texName)
 {
+	char *newFilename = kuhl_find_file(filename);
+	
     /* It is generally best to just load images in RGBA8 format even
      * if we don't need the alpha component. ImageMagick will fill the
      * alpha component in correctly (opaque if there is no alpha
@@ -3193,12 +1703,12 @@ float kuhl_read_texture_file(const char *filename, GLuint *texName)
      * http://www.opengl.org/wiki/Common_Mistakes#Image_precision
      */
 	imageio_info iioinfo;
-	iioinfo.filename   = strdup(filename);
+	iioinfo.filename   = newFilename;
 	iioinfo.type       = CharPixel;
 	iioinfo.map        = (char*) "RGBA";
 	iioinfo.colorspace = sRGBColorspace;
 	char *image = (char*) imagein(&iioinfo);
-	free(iioinfo.filename);
+	free(newFilename);
 	if(image == NULL)
 	{
 		fprintf(stderr, "%s: ERROR: Unable to read '%s'.\n", __func__, filename);
@@ -3338,45 +1848,9 @@ typedef struct {
 static textureIdMapStruct textureIdMap[textureIdMapMaxSize]; /**<List of textures for the models */
 static int textureIdMapSize = 0; /**< Number of items in textureIdMap */
 
-#define sceneMapMaxSize 1024 /**< Maximum number of scenes in sceneMap */
-/** This struct is used internally by kuhl_util.c to keep track of all
- * of the models that we have loaded. */
-typedef struct {
-	char *modelFilename; /**< The filename of the loaded model */
-	const struct aiScene *scene; /**< The scene information for the model */
-	float bb_min[3]; /**< Smallest X,Y,Z coordinates out of all vertices */
-	float bb_max[3]; /**< Largest X,Y,Z coordinates out of all vertices */
-	float bb_center[3]; /**< Average of smallest and largest vertex coordinates */
-	kuhl_geometry geom[sceneMapMaxSize]; /**< list of kuhl_geometry structs. Used for OpenGL 3.0 rendering */
-	int geom_count; /**< Number of kuhl_geometry structs in geom array. Used for OpenGL 3.0 rendering */
-} sceneMapStruct;
-
-static sceneMapStruct sceneMap[sceneMapMaxSize]; /**< A list of scenes */
-static int sceneMapSize = 0; /**< Number of items in the sceneMap list */
-
-
-/** Looks for a model in the sceneMap list based on its filename.
- *
- * @param modelFilename The filename for the model.
- *
- * @return The index of the model in the sceneMap list or -1 if the
- * model does not exist in the sceneMap.
- */
-static int kuhl_private_modelIndex(const char *modelFilename)
-{
-	for(int i=0; i<sceneMapSize; i++)
-	{
-		if(strcmp(modelFilename, sceneMap[i].modelFilename) == 0)
-			return i;
-	}
-	return -1;
-}
-
-
 
 /** Recursively traverse a tree of ASSIMP nodes and updates the
- * bounding box information stored in our sceneMap list for that
- * model.
+ * bounding box information.
  *
  * @param nd A pointer to an ASSIMP aiNode struct.
  *
@@ -3384,23 +1858,20 @@ static int kuhl_private_modelIndex(const char *modelFilename)
  *
  * @param scene An ASSIMP scene struct.
  *
- * @param modelIndex The index of the model in our sceneMap list.
+ * @param bbox The calculated bounding box information (xmin, xmax, ymin, ymax, etc).
  */
-static void kuhl_private_calc_bbox(const struct aiNode* nd, struct aiMatrix4x4* transform, const struct aiScene *scene, const int modelIndex)
+static void kuhl_private_calc_bbox(const struct aiNode* nd, struct aiMatrix4x4* transform, const struct aiScene *scene, float bbox[6])
 {
-	// Get shorter names for our current min/max/center vectors.
-	float *min = sceneMap[modelIndex].bb_min;
-	float *max = sceneMap[modelIndex].bb_max;
-	float *ctr = sceneMap[modelIndex].bb_center;
-	
 	/* When this method is called on the root node, the trafo matrix should be set to NULL. */
 	if(transform == NULL)
 	{
-		// Reset our bounding box variables
-		vec3f_set(min,  FLT_MAX,  FLT_MAX,  FLT_MAX);
-		vec3f_set(max, -FLT_MAX, -FLT_MAX, -FLT_MAX);
-		vec3f_set(ctr, 0,0,0);
-
+		bbox[0]=FLT_MAX;
+		bbox[1]=-FLT_MAX;
+		bbox[2]=FLT_MAX;
+		bbox[3]=-FLT_MAX;
+		bbox[4]=FLT_MAX;
+		bbox[5]=-FLT_MAX;
+		
 		// Set transform matrix to identity
 		struct aiMatrix4x4 ident;
 		aiIdentityMatrix4(&ident); 
@@ -3426,22 +1897,24 @@ static void kuhl_private_calc_bbox(const struct aiNode* nd, struct aiMatrix4x4* 
 			// Update our bounding box
 			float coord[3];
 			vec3f_set(coord, tmp.x, tmp.y, tmp.z);
-			for(int i=0; i<3; i++)
-			{
-				if(coord[i] > max[i]) // found new max
-					max[i] = coord[i];
-				if(coord[i] < min[i]) // found new min
-					min[i] = coord[i];
-			}
-			// Calculate new box center
-			vec3f_add_new(ctr, min, max);
-			vec3f_scalarDiv(ctr, 2);
+			if(tmp.x < bbox[0])
+				bbox[0] = tmp.x;
+			if(tmp.x > bbox[1])
+				bbox[1] = tmp.x;
+			if(tmp.y < bbox[2])
+				bbox[2] = tmp.y;
+			if(tmp.y > bbox[3])
+				bbox[3] = tmp.y;
+			if(tmp.z < bbox[4])
+				bbox[4] = tmp.z;
+			if(tmp.z > bbox[5])
+				bbox[5] = tmp.z;
 		}
 	}
 	
 	/* Process the children nodes using the current transformation. */
 	for (unsigned int n=0; n < nd->mNumChildren; n++)
-		kuhl_private_calc_bbox(nd->mChildren[n], transform, scene, modelIndex);
+		kuhl_private_calc_bbox(nd->mChildren[n], transform, scene, bbox);
 
 	/* Since we are done processing this node, we need to restore the
 	* transformation matrix to whatever it was before we started
@@ -3597,7 +2070,6 @@ static void kuhl_print_aiScene_info(const char *modelFilename, const struct aiSc
 		}
 	}
 
-
 	for(unsigned int i=0; i<scene->mNumMeshes; i++)
 	{
 		struct aiMesh *mesh = scene->mMeshes[i];
@@ -3625,26 +2097,22 @@ static void kuhl_print_aiScene_info(const char *modelFilename, const struct aiSc
 	printf("%s: Contains %d node(s) & %u mesh(es)\n", modelFilename, numNodes, scene->mNumMeshes);
 }
 
-/** Uses ASSIMP to load model (if needed) and returns its index in the
- * sceneMap array. This function also reads texture files that the
- * model refers to. This function does not create any kuhl_geometry
- * structs for the model.
+/** Uses ASSIMP to load model (if needed) and returns ASSIMP aiScene
+ * object. This function also reads texture files that the model
+ * refers to. This function does not create any kuhl_geometry structs
+ * for the model.
  *
  * @param modelFilename The filename of a model to load.
  *
  * @param textureDirname The directory the textures for the model are
  * stored in. If textureDirname is NULL, we assume that the textures
  * are in the same directory as the model file.
- * 
- * @return Returns the index in the sceneMap array of this
- * model. Prints a message and exits if the model could not be loaded.
+ *
+ * @return An ASSIMP aiScene object for the requested model. Returns
+ * NULL on error.
  */
-static int kuhl_private_assimp_load(const char *modelFilename, const char *textureDirname)
+static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename, const char *textureDirname)
 {
-	int index = kuhl_private_modelIndex(modelFilename);
-	if(index >= 0)
-		return index;
-
 	/* If we get here, we need to add the file to the sceneMap. */
 
 	/* Write assimp messages to command line */
@@ -3679,14 +2147,18 @@ static int kuhl_private_assimp_load(const char *modelFilename, const char *textu
 	 * aiProcess_GenSmoothNormals - Generate smooth normals if normals aren't present in file
 	 * aiProcess_LimitBoneWeights - Limits bone weights per vertex to 4
 	 * aiProcess_JoinIdenticalVertices - Ensures that the model uses an index buffer.
+	 * aiProcess_PreTransformVertices - Pretransforms all vertices according to matrices in the model file
 	 */
-	const struct aiScene* scene = aiImportFile(modelFilenameVarying, aiProcessPreset_TargetRealtime_Quality);
+
+	// If we are generating smooth normals, don't smooth edges that
+	// are 80 degrees or higher (i.e., use flat normals on a cube).
+	struct aiPropertyStore* propStore = aiCreatePropertyStore();
+	aiSetImportPropertyFloat(propStore, "PP_GSN_MAX_SMOOTHING_ANGLE", 50.0f);
+	// Import/load the model
+	const struct aiScene* scene = aiImportFileExWithProperties(modelFilenameVarying,aiProcessPreset_TargetRealtime_Quality, NULL, propStore);
 	free(modelFilenameVarying);
 	if(scene == NULL)
-	{
-		printf("%s: ASSIMP was unable to import the model file.\n", modelFilename);
-		exit(EXIT_FAILURE);
-	}
+		return NULL;
 
 	/* Print warning messages if the model uses features that our code
 	 * doesn't support (even though ASSIMP might support them. */
@@ -3710,19 +2182,6 @@ static int kuhl_private_assimp_load(const char *modelFilename, const char *textu
 		{
 			textureIdMap[i].textureFileName = NULL;
 			textureIdMap[i].textureID = 0;
-		}
-	}
-
-	/* For safety, zero our our sceneMap if it is supposed to be empty right now. */
-	if(sceneMapSize == 0)
-	{
-		for(int i=0; i<sceneMapMaxSize; i++)
-		{
-			sceneMap[i].modelFilename = NULL;
-			sceneMap[i].scene = NULL;
-			for(int j=0; j<sceneMapMaxSize; j++)
-				kuhl_geometry_zero(&(sceneMap[i].geom[j]));
-			sceneMap[i].geom_count = 0;
 		}
 	}
 
@@ -3765,205 +2224,7 @@ static int kuhl_private_assimp_load(const char *modelFilename, const char *textu
 		}
 	}
 
-	/* Store the scene information in our list structure so we can
-	 * find the scene from the model filename again in the future. */
-	if(sceneMapSize >= sceneMapMaxSize)
-	{	
-		fprintf(stderr, "%s: You have loaded more scenes than the hardcoded limit. Exiting.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-
-	index = sceneMapSize;
-	sceneMapSize++;
-
-	sceneMap[index].modelFilename = strdup(modelFilename);
-	sceneMap[index].scene = scene;
-	kuhl_private_calc_bbox(scene->mRootNode, NULL, scene, index);
-
-	printf("%s: Bounding box min: ", modelFilename);
-	vec3f_print(sceneMap[index].bb_min);
-	printf("%s: Bounding box max: ", modelFilename);
-	vec3f_print(sceneMap[index].bb_max);
-	printf("%s: Bounding box ctr: ", modelFilename);
-	vec3f_print(sceneMap[index].bb_center);
-	return index;
-}
-
-
-/** Convert a aiColor4d struct into a plain 4 element array. Used by
- * kuhl_private_material_ogl2()
- *
- * @param c An aiColor4D struct used by ASSIMP to represent a color.
- * @param f A 4 element array to copy the color data into.
- */
-static void kuhl_private_c4_to_f4(const struct aiColor4D *c, float f[4])
-{	f[0] = c->r;
-	f[1] = c->g;
-	f[2] = c->b;
-	f[3] = c->a;
-}
-
-
-/** Given an ASSIMP material, set up OpenGL 1/2 rendering settings so
- * that we can draw polygons with that material.
- *
- * @param mtl The material we want to render.
- */
-static void kuhl_private_material_ogl2(const struct aiMaterial *mtl)
-{
-	struct aiString texPath;	//contains filename of texture
-	int texIndex = 0;
-	if(AI_SUCCESS == aiGetMaterialTexture(mtl, aiTextureType_DIFFUSE, texIndex, &texPath,
-	                                      NULL, NULL, NULL, NULL, NULL, NULL))
-	{
-		glEnable(GL_TEXTURE_2D);
-		//bind texture
-		for(int i=0; i<textureIdMapSize; i++)
-			if(strcmp(textureIdMap[i].textureFileName, texPath.data) == 0)
-				glBindTexture(GL_TEXTURE_2D, textureIdMap[i].textureID);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-
-	float c[4];
-	struct aiColor4D diffuse, specular, ambient, emission;
-	vec4f_set(c, 0.8f, 0.8f, 0.8f, 1.0f);
-	if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse))
-		kuhl_private_c4_to_f4(&diffuse, c);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, c);
-
-	// specular
-	vec4f_set(c, 0.0f, 0.0f, 0.0f, 1.0f);
-	if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_SPECULAR, &specular))
-		kuhl_private_c4_to_f4(&specular, c);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, c);
-
-	// ambient
-	vec4f_set(c, 0.2f, 0.2f, 0.2f, 1.0f);
-	if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_AMBIENT, &ambient))
-		kuhl_private_c4_to_f4(&ambient, c);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, c);
-
-	// emission
-	vec4f_set(c, 0.0f, 0.0f, 0.0f, 1.0f);
-	if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_EMISSIVE, &emission))
-		kuhl_private_c4_to_f4(&emission, c);
-	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, c);
-
-	unsigned int max = 1;
-	float shininess, strength;
-	int ret1 = aiGetMaterialFloatArray(mtl, AI_MATKEY_SHININESS, &shininess, &max);
-	if(ret1 == AI_SUCCESS) {
-    	max = 1;
-    	int ret2 = aiGetMaterialFloatArray(mtl, AI_MATKEY_SHININESS_STRENGTH, &strength, &max);
-		if(ret2 == AI_SUCCESS)
-			glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess * strength);
-        else
-        	glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
-    }
-	else {
-		glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0f);
-		vec4f_set(c, 0.0f, 0.0f, 0.0f, 0.0f);
-		glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, c);
-	}
-
-	/* Default to filling triangles, use wireframe if requested. */
-	GLenum fill_mode = GL_FILL;
-	int wireframe = GL_FILL;
-	max = 1;
-	if(aiGetMaterialIntegerArray(mtl, AI_MATKEY_ENABLE_WIREFRAME,
-	                             &wireframe, &max) == AI_SUCCESS)
-	   fill_mode = wireframe ? GL_LINE : GL_FILL;
-	glPolygonMode(GL_FRONT_AND_BACK, fill_mode);
-
-	/* Default to culling faces. Draw both front and back faces if requested. */
-	max = 1;
-	glEnable(GL_CULL_FACE);
-	int two_sided = 0;
-	if(aiGetMaterialIntegerArray(mtl, AI_MATKEY_TWOSIDED,
-	                             &two_sided, &max) == AI_SUCCESS)
-		if(two_sided)
-			glDisable(GL_CULL_FACE);
-}
-
-/** Recursively render the scene and apply materials appropriately
- * using OpenGL 1 and 2 calls. This code should handle transformation
- * matrices that might be loaded in the file correctly (if we didn't
- * apply them when ASSIMP actually imported/loaded the model file).
- *
- * @param sc The scene that we want to render.
- *
- * @param nd The current node that we are rendering.
- */
-static void kuhl_private_recrend_ogl2(const struct aiScene *sc, const struct aiNode* nd)
-{
-	struct aiMatrix4x4 m = nd->mTransformation;
-
-	// update transform
-	aiTransposeMatrix4(&m);
-	glPushMatrix();
-	glMultMatrixf((float*)&m);
-
-	// draw all meshes assigned to this node
-	for(unsigned int n=0; n < nd->mNumMeshes; n++) {
-		const struct aiMesh* mesh = sc->mMeshes[nd->mMeshes[n]];
-		// Set up the material
-		kuhl_private_material_ogl2(sc->mMaterials[mesh->mMaterialIndex]);
-
-		/* Don't use lighting if no normals are provided */
-		if(mesh->mNormals == NULL)
-			glDisable(GL_LIGHTING);
-		else
-			glEnable(GL_LIGHTING);
-
-		/* Colors are specified, use them */
-		if(mesh->mColors == NULL || mesh->mColors[0] == NULL)
-			glDisable(GL_COLOR_MATERIAL);
-		else
-			glEnable(GL_COLOR_MATERIAL);
-
-		for(unsigned int t = 0; t < mesh->mNumFaces; t++)
-		{
-			const struct aiFace* face = &mesh->mFaces[t];
-			GLenum face_mode;
-
-			switch(face->mNumIndices)
-			{
-				case 1: face_mode = GL_POINTS; break;
-				case 2: face_mode = GL_LINES; break;
-				case 3: face_mode = GL_TRIANGLES; break;
-				default: face_mode = GL_POLYGON; break;
-			}
-
-			glBegin(face_mode); /* begin drawing */
-			for(unsigned int i=0; i < face->mNumIndices; i++)
-			{
-				int index = face->mIndices[i];
-				/* Set color of vertex */
-				if(mesh->mColors != NULL && mesh->mColors[0] != NULL)
-					glColor4fv((GLfloat*)&mesh->mColors[0][index]);
-				/* Set texture coordinate of vertex */
-				if(mesh->mTextureCoords != NULL && mesh->mTextureCoords[0] != NULL)
-				{
-					glTexCoord2f(mesh->mTextureCoords[0][index].x,
-					             mesh->mTextureCoords[0][index].y);  
-				}
-				/* Set the normal at this vertex */
-				if(mesh->mNormals != NULL)
-					glNormal3fv(&mesh->mNormals[index].x);
-				/* Draw the vertex */
-				glVertex3fv(&mesh->mVertices[index].x);
-			}
-			glEnd(); /* Finish drawing */
-		}
-	}
-
-	// Draw all children nodes too.
-	for (unsigned int i = 0; i < nd->mNumChildren; i++)
-		kuhl_private_recrend_ogl2(sc, nd->mChildren[i]);
-
-	glPopMatrix();
+	return scene;
 }
 
 /** Given a aiNodeAnim object and a time, return an appropriate
@@ -4073,7 +2334,7 @@ static void kuhl_private_anim_matrix(float transformResult[16], const struct aiN
 	float scalingMatrix[16];
 	mat4f_scaleVec_new(scalingMatrix, scalingValMid);
 	
-	// translation * rotation * scaling
+	// transformResult = translation * rotation * scaling
 	mat4f_mult_mat4f_new(transformResult, positionMatrix, rotationMatrix);
 	mat4f_mult_mat4f_new(transformResult, transformResult, scalingMatrix);
 }
@@ -4095,7 +2356,9 @@ static void kuhl_private_anim_matrix(float transformResult[16], const struct aiN
  * @param animationNum If the file contains more than one animation,
  * indicates which animation to use. If you don't know, set this to 0.
  *
- * @param t The time in seconds that you want the animation matrix for.
+ * @param t The time in seconds that you want the animation matrix
+ * for. If time is negative, this function is guaranteed to return the
+ * transformation matrix in the node.
  *
  * @return Returns 1 if we successfully returned a matrix based on
  * animation information. Returns 0 if we simply returned the
@@ -4131,11 +2394,43 @@ static int kuhl_private_node_matrix(float transformResult[16],
 	 * transformation matrix from the node. */
 	if(channel < 0 || t > anim->mDuration / anim->mTicksPerSecond || t < 0)
 		return 0;
-	
+
+	/* Get this nodes matrix according to the animation
+	 * information. */
 	struct aiNodeAnim *na = anim->mChannels[channel];
 	kuhl_private_anim_matrix(transformResult, na, t*anim->mTicksPerSecond);
 	return 1;
 }
+
+
+/* Appends two kuhl_geometry lists together and returns the first item
+ * in the list.
+ *
+ * @param a The list of geometry that should be appended to.
+ *
+ * @param b The lits of geometry to append to the end of the 'a' list.
+ *
+ * @return The first kuhl_geometry object in the appended
+ * list. Typically, this will equal 'a'. This function returns NULL if
+ * both 'a' and 'b' are null. It returns 'b' if only 'a' is null.
+ */
+kuhl_geometry* kuhl_geometry_append(kuhl_geometry *a, kuhl_geometry *b)
+{
+	if(a == NULL && b == NULL)
+		return NULL;
+	if(a == NULL && b != NULL)
+		return b;
+	if(a != NULL && b == NULL)
+		return a;
+
+	kuhl_geometry *origA = a;
+	while(a->next != NULL)
+		a = a->next;
+	a->next = b;
+	return origA;
+}
+
+
 
 /** Recursively calls itself to create one or more kuhl_geometry
  * structs for all of the nodes in the scene.
@@ -4144,10 +2439,10 @@ static int kuhl_private_node_matrix(float transformResult[16],
  *
  * @param nd The current node that we are rendering.
  */
-static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
-                                          const struct aiNode* nd,
-                                          GLuint program, int sceneMapIndex,
-                                          float currentTransform[16])
+static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
+                                              const struct aiNode* nd,
+                                              GLuint program,
+                                              float currentTransform[16])
 {
 	/* Each node in the scene has a transform matrix that should
 	 * affect all of the nodes under it. The currentTransform matrix
@@ -4167,62 +2462,118 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 	/* Apply this node's transformation to our current transform. */
 	mat4f_mult_mat4f_new(currentTransform, currentTransform, thisTransform);
 
+	kuhl_geometry *first_geom = NULL;
+	
 	/* Create a kuhl_geometry object for each of the meshes assigned
 	 * to this ASSIMP node. */
 	for(unsigned int n=0; n < nd->mNumMeshes; n++)
 	{
 		const struct aiMesh* mesh = sc->mMeshes[nd->mMeshes[n]];
 
-		/* Create a kuhl_geometry object for this mesh. */
-		kuhl_geometry geom;
-		kuhl_geometry_zero(&geom);
-		geom.assimp_node = (struct aiNode*) nd;
-		geom.assimp_scene = (struct aiScene*) sc;
-		geom.program = program;
-		geom.primitive_type = GL_TRIANGLES;
-		mat4f_copy(geom.matrix, currentTransform);
+		/* Confirm that the mesh has only one primitive type. */
+		if(mesh->mPrimitiveTypes == 0)
+		{
+			printf("%s: ERROR: Primitive type not set by ASSIMP in mesh.\n", __func__);
+			continue;
+		}
+		// Check if more than one bit (i.e., primitive type) is in this mesh.
+		if((mesh->mPrimitiveTypes & (mesh->mPrimitiveTypes-1)) != 0) 
+		{
+			printf("%s: ERROR: This mesh has more than one primitive "
+			       "type in it. The model should be loaded with the "
+			       "aiProcess_SortByPType flag set.\n", __func__);
+			continue;
+		}
+
+		/* We assume that each mesh has its own primitive type. Here
+		 * we identify that type by number and by the OpenGL name.. */
+		unsigned int meshPrimitiveType;
+		int meshPrimitiveTypeGL;
+		if(mesh->mPrimitiveTypes & aiPrimitiveType_POINT)
+		{
+			meshPrimitiveType = 1;
+			meshPrimitiveTypeGL = GL_POINTS;
+		}
+		else if(mesh->mPrimitiveTypes & aiPrimitiveType_LINE)
+		{
+			meshPrimitiveType = 2;
+			meshPrimitiveTypeGL = GL_LINES;
+		}
+		else if(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE)
+		{
+			meshPrimitiveType = 3;
+			meshPrimitiveTypeGL = GL_TRIANGLES;
+		}
+		else if(mesh->mPrimitiveTypes & aiPrimitiveType_POLYGON)
+		{
+			printf("%s: WARNING: Mesh %u (%u/%u meshes in node \"%s\"): We only "
+			       "support drawing triangle, line, or point meshes. "
+			       "This mesh contained polygons, and we are skipping it. "
+			       "To resolve this problem, ensure that the file is loaded "
+			       "with aiProcess_Triangulage to force ASSIMP to triangulate "
+			       "the model.\n",
+			       __func__, nd->mMeshes[n], n+1, nd->mNumMeshes, nd->mName.data);
+			continue;
+		}
+		else
+		{
+			printf("%s: ERROR: Unknown primitive type in mesh.\n", __func__);
+			continue;
+		}
+		
+		/* Allocate space and initialize kuhl_geometry. One kuhl_geometry
+		 * will be used per mesh. We
+		 * allocate each one individually (instead of malloc()'ing one
+		 * large space for all of the meshes in this node so each of
+		 * the objects can be free()'d) */
+		kuhl_geometry *geom = (kuhl_geometry*) kuhl_malloc(sizeof(kuhl_geometry));
+		kuhl_geometry_new(geom, program, mesh->mNumVertices,
+		                  meshPrimitiveTypeGL);
+
+		/* Set up kuhl_geometry linked list */
+		first_geom = kuhl_geometry_append(first_geom, geom);
+
+		geom->assimp_node = (struct aiNode*) nd;
+		geom->assimp_scene = (struct aiScene*) sc;
+		mat4f_copy(geom->matrix, currentTransform);
 
 		/* Store the vertex position attribute into the kuhl_geometry struct */
-		geom.vertex_count = mesh->mNumVertices;
-		float *vertexPositions = malloc(sizeof(float)*mesh->mNumVertices*3);
+		float *vertexPositions = kuhl_malloc(sizeof(float)*mesh->mNumVertices*3);
 		for(unsigned int i=0; i<mesh->mNumVertices; i++)
 		{
 			vertexPositions[i*3+0] = (mesh->mVertices)[i].x;
 			vertexPositions[i*3+1] = (mesh->mVertices)[i].y;
 			vertexPositions[i*3+2] = (mesh->mVertices)[i].z;
 		}
-		geom.attrib_pos = vertexPositions;
-		geom.attrib_pos_components = 3;
-		geom.attrib_pos_name = "in_Position";
+		kuhl_geometry_attrib(geom, vertexPositions, 3, "in_Position", 0);
+		free(vertexPositions);
 
 		/* Store the normal vectors in the kuhl_geometry struct */
 		if(mesh->mNormals != NULL)
 		{
-			float *normals = malloc(sizeof(float)*mesh->mNumVertices*3);
+			float *normals = kuhl_malloc(sizeof(float)*mesh->mNumVertices*3);
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
 			{
 				normals[i*3+0] = (mesh->mNormals)[i].x;
 				normals[i*3+1] = (mesh->mNormals)[i].y;
 				normals[i*3+2] = (mesh->mNormals)[i].z;
 			}
-			geom.attrib_normal = normals;
-			geom.attrib_normal_components = 3;
-			geom.attrib_normal_name = "in_Normal";
+			kuhl_geometry_attrib(geom, normals, 3, "in_Normal", 0);
+			free(normals);
 		}
 
 		/* Store the vertex color attribute */
 		if(mesh->mColors != NULL && mesh->mColors[0] != NULL)
 		{
-			float *colors = malloc(sizeof(float)*mesh->mNumVertices*3);
+			float *colors = kuhl_malloc(sizeof(float)*mesh->mNumVertices*3);
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
 			{
 				colors[i*3+0] = mesh->mColors[0][i].r;
 				colors[i*3+1] = mesh->mColors[0][i].g;
 				colors[i*3+2] = mesh->mColors[0][i].b;
 			}
-			geom.attrib_color = colors;
-			geom.attrib_color_components = 3;
-			geom.attrib_color_name = "in_Color";
+			kuhl_geometry_attrib(geom, colors, 3, "in_Color", 0);
+			free(colors);
 		}
 		/* If there are no vertex colors, try to use material colors instead */
 		else
@@ -4236,31 +2587,28 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 			struct aiColor4D diffuse;
 			if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse))
 			{
-				float *colors = malloc(sizeof(float)*mesh->mNumVertices*3);
+				float *colors = kuhl_malloc(sizeof(float)*mesh->mNumVertices*3);
 				for(unsigned int i=0; i<mesh->mNumVertices; i++)
 				{
 					colors[i*3+0] = diffuse.r;
 					colors[i*3+1] = diffuse.g;
 					colors[i*3+2] = diffuse.b;
 				}
-				geom.attrib_color = colors;
-				geom.attrib_color_components = 3;
-				geom.attrib_color_name = "in_Color";
+				kuhl_geometry_attrib(geom, colors, 3, "in_Color", 0);
 			}
 		}
 		
 		/* Store the texture coordinate attribute */
 		if(mesh->mTextureCoords != NULL && mesh->mTextureCoords[0] != NULL)
 		{
-			float *texCoord = malloc(sizeof(float)*mesh->mNumVertices*2);
+			float *texCoord = kuhl_malloc(sizeof(float)*mesh->mNumVertices*2);
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
 			{
 				texCoord[i*2+0] = mesh->mTextureCoords[0][i].x;
 				texCoord[i*2+1] = mesh->mTextureCoords[0][i].y;
 			}
-			geom.attrib_texcoord = texCoord;
-			geom.attrib_texcoord_components = 2;
-			geom.attrib_texcoord_name = "in_TexCoord";
+			kuhl_geometry_attrib(geom, texCoord, 2, "in_TexCoord", 1);
+			free(texCoord);
 		}
 
 		/* Fill in bone information */
@@ -4273,8 +2621,8 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 				exit(EXIT_FAILURE);
 			}
 			
-			float *indices = malloc(sizeof(float)*mesh->mNumVertices*4);
-			float *weights = malloc(sizeof(float)*mesh->mNumVertices*4);
+			float *indices = kuhl_malloc(sizeof(float)*mesh->mNumVertices*4);
+			float *weights = kuhl_malloc(sizeof(float)*mesh->mNumVertices*4);
 			/* For each vertex */
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
 			{
@@ -4314,19 +2662,14 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 			{
 				if(weights[i*4+0] == 0)
 				{
-					printf("Vertex lacks any weights!\n");
+					fprintf(stderr, "%s: ERROR Every vertex should have at least one weight but vertex %ud has no weights!\n", __func__, i);
 					exit(EXIT_FAILURE);
 				}
-				//printf("%f %f %f %f\n", weights[i*4+0],
-				//     weights[i*4+1], weights[i*4+2], weights[i*4+3]);
 			}
-
-			geom.attrib_boneIndex = indices;
-			geom.attrib_boneIndex_components = 4;
-			geom.attrib_boneIndex_name = "in_BoneIndex";
-			geom.attrib_boneWeight = weights;
-			geom.attrib_boneWeight_components = 4;
-			geom.attrib_boneWeight_name = "in_BoneWeight";
+			kuhl_geometry_attrib(geom, indices, 4, "in_BoneIndex", 0);
+			kuhl_geometry_attrib(geom, weights, 4, "in_BoneWeight", 0);
+			free(indices);
+			free(weights);
 		} // end if there are bones 
 		
 		/* Find our texture and tell our kuhl_geometry object about
@@ -4337,51 +2680,48 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 		                                      aiTextureType_DIFFUSE, texIndex, &texPath,
 		                                      NULL, NULL, NULL, NULL, NULL, NULL))
 		{
-			geom.texture_name = "tex"; // name of sampler in GLSL fragment program.
-			geom.texture = 0;
+			GLuint texture = 0;
 			for(int i=0; i<textureIdMapSize; i++)
 				if(strcmp(textureIdMap[i].textureFileName, texPath.data) == 0)
-					geom.texture = textureIdMap[i].textureID;
-			if(geom.texture == 0)
+					texture = textureIdMap[i].textureID;
+			if(texture == 0)
 			{
 				printf("%s: WARNING: Mesh %u uses texture '%s'. This texture should have been loaded earlier, but we can't find it now.\n",
 				       __func__, nd->mMeshes[n], texPath.data);
 			}
 			else
 			{
-				// If Model uses texture and we found the texture file
-				
-				/* Make sure we repeat instead of clamp textures */
-				glBindTexture(GL_TEXTURE_2D, geom.texture);
+				/* If model uses texture and we found the texture file,
+				   Make sure we repeat instead of clamp textures */
+				glBindTexture(GL_TEXTURE_2D, texture);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 				kuhl_errorcheck();
+
+				kuhl_geometry_texture(geom, texture, "tex", 0);
 			}
 		}
 
-		/* Get indices to draw with */
-		geom.indices_len = mesh->mNumFaces * 3;
-		GLuint *indices = malloc(sizeof(GLuint)*geom.indices_len);
-		for(unsigned int t = 0; t<mesh->mNumFaces; t++)
+		if(mesh->mNumFaces > 0)
 		{
-			const struct aiFace* face = &mesh->mFaces[t];
-			if(face->mNumIndices != 3)
+			/* Get indices to draw with */
+			GLuint numIndices = mesh->mNumFaces * meshPrimitiveType;
+			GLuint *indices = kuhl_malloc(sizeof(GLuint)*numIndices);
+			for(unsigned int t = 0; t<mesh->mNumFaces; t++) // for each face
 			{
-				printf("%s: Mesh %u (%u/%u meshes in node \"%s\"): We only support drawing triangle meshes. We found a face in this model that only had %u (not 3) indices.",
-				       __func__, nd->mMeshes[n], n+1, nd->mNumMeshes, nd->mName.data,
-				       face->mNumIndices);
-				exit(EXIT_FAILURE);
+				const struct aiFace* face = &mesh->mFaces[t];
+				for(unsigned int x = 0; x < meshPrimitiveType; x++) // for each index
+					indices[t*meshPrimitiveType+x] = face->mIndices[x];
 			}
-			indices[t*3+0] = face->mIndices[0];
-			indices[t*3+1] = face->mIndices[1];
-			indices[t*3+2] = face->mIndices[2];
+			kuhl_geometry_indices(geom, indices, numIndices);
+			free(indices);
 		}
-		geom.indices = indices;
+
 
 		/* Initialize list of bone matrices if this mesh has bones. */
 		if(mesh->mNumBones > 0)
 		{
-			kuhl_bonemat *bones = (kuhl_bonemat*) malloc(sizeof(kuhl_bonemat));
+			kuhl_bonemat *bones = (kuhl_bonemat*) kuhl_malloc(sizeof(kuhl_bonemat));
 			bones->count = mesh->mNumBones;
 			bones->mesh = n;
 			for(unsigned int b=0; b < MAX_BONES; b++)
@@ -4391,93 +2731,35 @@ static void kuhl_private_setup_model_ogl3(const struct aiScene *sc,
 				strncpy(bones->names[b], mesh->mBones[b]->mName.data, 256);
 				bones->names[b][255]='\0';
 			}
-			geom.bones = bones;
+			geom->bones = bones;
 		}
 
-		printf("%s: Mesh #%03u is one of %u meshes in node \"%s\": numVertices=%d numIndices=%d hasNormals=%s hasColors=%s hasTexCoords=%s numBones=%d texture=%s\n",
+		printf("%s: Mesh #%03u is one of %u meshes in node \"%s\": numVertices=%d numIndices=%d primitiveType=%d hasNormals=%s hasColors=%s hasTexCoords=%s numBones=%d texture=%s\n",
 		       __func__, nd->mMeshes[n], nd->mNumMeshes, nd->mName.data,
 		       mesh->mNumVertices,
-		       mesh->mNumFaces*3,
+		       mesh->mNumFaces*meshPrimitiveType,
+		       meshPrimitiveType,
 		       mesh->mNormals       == NULL ? "no" : "yes",
 		       mesh->mColors==NULL || mesh->mColors[0]==NULL ? "no" : "yes",
 		       mesh->mTextureCoords == NULL ? "no" : "yes",
 		       mesh->mNumBones,
-		       geom.texture         == 0    ? "(null)" : texPath.data);
+		       geom->texture_count == 0 ? "(null)" : texPath.data);
+	} // end for each mesh in node
 
-		/* Initialize this geometry object */
-		kuhl_geometry_init(&geom);
-
-		/* Free stuff we don't need any more. Note: We don't store
-		 * these arrays on the stack because large models can result
-		 * in arrays which are too large to fit in the stack. So, we
-		 * use malloc() for them. After we initialize the
-		 * kuhl_geometry structs, the data has been copied to OpenGL
-		 * and we can safely free them. */
-		if(geom.attrib_pos) free(geom.attrib_pos);
-		if(geom.attrib_color) free(geom.attrib_color);
-		if(geom.attrib_normal) free(geom.attrib_normal);
-		if(geom.attrib_texcoord) free(geom.attrib_texcoord);
-		if(geom.attrib_boneIndex) free(geom.attrib_boneIndex);
-		if(geom.attrib_boneWeight) free(geom.attrib_boneWeight);
-		if(geom.indices) free(geom.indices);
-		
-		/* Save this geometry object so we can draw it later */
-		sceneMapStruct *sm = &(sceneMap[sceneMapIndex]);
-		if(sm->geom_count >= sceneMapMaxSize)
-		{
-			printf("%s: The model required too many kuhl_geometry structs.\n", __func__);
-			exit(EXIT_FAILURE);
-		}
-		sm->geom[sm->geom_count] = geom;
-		sm->geom_count = sm->geom_count+1;
-	}
-
-	// Draw all children nodes too.
+	/* Process all of the meshes in the aiNode's children too */
 	for (unsigned int i = 0; i < nd->mNumChildren; i++)
-		kuhl_private_setup_model_ogl3(sc, nd->mChildren[i], program, sceneMapIndex, currentTransform);
+	{
+		kuhl_geometry *child_geom = kuhl_private_load_model(sc, nd->mChildren[i], program, currentTransform);
+		first_geom = kuhl_geometry_append(first_geom, child_geom);
+	}
 
 	/* Restore the transform matrix to exactly as it was when this
 	 * function was called by the caller. */
 	mat4f_copy(currentTransform, origTransform);
+
+	return first_geom;
 }
 
-
-/** Given a model file, load the model (if it hasn't been loaded
- * already) and render that file using OpenGL2. The preprocessor
- * variable KUHL_UTIL_USE_ASSIMP must be defined to use this function.
- *
- * @param modelFilename The filename of the model.
- *
- * @param textureDirname The directory that the model's textures are
- * saved in. If set to NULL, the textures are assumed to be in the
- * same directory as the model is in. If the model has already been
- * drawn/loaded, this parameter is unused.
- *
- * @return Returns 1 if successful and 0 if we failed to load the model.
- */
-int kuhl_draw_model_file_ogl2(const char *modelFilename, const char *textureDirname)
-{
-	// Load the model if necessary and get its index in our sceneMap.
-	int index = kuhl_private_assimp_load(modelFilename, textureDirname);
-	if(index >= 0)
-	{
-		/* Save and restore OpenGL state so that any state that we set
-		 * doesn't bleed over into other things that the caller draws
-		 * later. */
-		glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-		// Draw the scene
-		kuhl_private_recrend_ogl2(sceneMap[index].scene, sceneMap[index].scene->mRootNode);
-		glPopAttrib();
-		return 1;
-	}
-	return 0;
-	
-	/* TODO: Think about proving a way for a user to cleanup models
-	   appropriately. We would call these two functions: */
-	// aiReleaseImport(scene);
-	// aiDetachAllLogStreams();
-}
 
 /** Setup a model to draw at a specific time.
 
@@ -4487,33 +2769,23 @@ int kuhl_draw_model_file_ogl2(const char *modelFilename, const char *textureDirn
     contains one animation, set it to 0.
 
     @param time The time in seconds to set the animation to. Setting
-    time to a negative can ensure that the model displays in its bind
-    pose.
+    time to a negative displays the model in its bind pose.
 */
-void kuhl_update_model_file_ogl3(const char *modelFilename, unsigned int animationNum, float time)
+void kuhl_update_model(kuhl_geometry *first_geom, unsigned int animationNum, float time)
 {
-	/* Find the model in our scenemap. */
-	int index = kuhl_private_modelIndex(modelFilename);
-	if(index < 0)
-		return;
-
-	sceneMapStruct *sm = &(sceneMap[index]);
-	
-	/* For each kuhl_geometry object in this model. */
-	for(int i=0; i<sm->geom_count; i++)
+	for(kuhl_geometry *g = first_geom; g != NULL; g=g->next)
 	{
-		kuhl_geometry *g = &(sm->geom[i]);
 		/* The aiScene object that this kuhl_geometry refers to. */
 		struct aiScene *scene = g->assimp_scene;
 		/* The aiNode object that this kuhl_geometry refers to. */
 		struct aiNode *node = g->assimp_node;
 
-		if(scene == NULL || node == NULL)
-		{
-			printf("%s: Scene or node was NULL for %s\n", __func__, modelFilename);
+		/* If the geometry contains no animations, isn't associated
+		 * with an ASSIMP scene or node, then there is no need to try
+		 * to animate it. */
+		if(scene->mNumAnimations == 0 || scene == NULL || node == NULL)
 			continue;
-		}
-
+		
 		/* Start at our current node and traverse up. Apply all of the
 		 * transformation matrices as we traverse up. */
 		float result[16];
@@ -4566,8 +2838,7 @@ void kuhl_update_model_file_ogl3(const char *modelFilename, unsigned int animati
 	} // end for each geometry
 }
 
-/** Loads a model without drawing it. This function is automatically
- * called by kuhl_draw_model_file_ogl3().
+/** Loads a model without drawing it.
  *
  * @param modelFilename The filename of the model.
  *
@@ -4578,133 +2849,111 @@ void kuhl_update_model_file_ogl3(const char *modelFilename, unsigned int animati
  *
  * @param program The GLSL program to draw the model with.
  *
- * @return Returns 1 if successful and 0 if we failed to load the model.
+ * @param bbox To be filled in with the bounding box of the model
+ * (xmin, xmax, ymin, etc). The bounding box may be incorrect if the
+ * model includes animation.
+ *
+ * @return Returns a kuhl_geometry object that can be later drawn. If
+ * the model contains multiple meshes, kuhl_geometry will be a linked
+ * list (i.e., geom->next will not be NULL).
  */
-int kuhl_load_model_file_ogl3(const char *modelFilename, const char *textureDirname, GLuint program)
+kuhl_geometry* kuhl_load_model(const char *modelFilename, const char *textureDirname,
+                               GLuint program, float bbox[6])
 {
-	int index = kuhl_private_modelIndex(modelFilename);
-	
-	// If we have already loaded the program but we have been asked to
-	// draw the scene with a different program.
-	if(index >= 0 && sceneMap[index].geom_count > 0 && sceneMap[index].geom[0].program != program)
+	// Loads the model from the file and reads in all of the textures:
+	const struct aiScene *scene = kuhl_private_assimp_load(modelFilename, textureDirname);
+	if(scene == NULL)
 	{
-		printf("%s: Reloading model %s since program switched from %d to %d\n",
-		       __func__, modelFilename, sceneMap[index].geom[0].program, program);
-		sceneMapStruct *sm = &(sceneMap[index]);
-		// Reset and zero out the kuhl_geometry objects previously used with this model.
-		for(int i=0; i<sm->geom_count; i++)
-		{
-			kuhl_geometry_delete(&(sm->geom[i]));
-			kuhl_geometry_zero(&(sm->geom[i]));
-		}
-		sm->geom_count = 0;
-		index = -1;
-	}
-	
-	if(index < 0) // if we need to load the model
-	{
-		// Load the model if necessary and get its index in our sceneMap.
-		index = kuhl_private_assimp_load(modelFilename, textureDirname);
-		float transform[16];
-		mat4f_identity(transform);
-		kuhl_private_setup_model_ogl3(sceneMap[index].scene, sceneMap[index].scene->mRootNode, program, index, transform);
-
-		/* Ensure model shows up in bind pose if the caller doesn't
-		 * also call kuhl_update_model_file_ogl3(). */
-		kuhl_update_model_file_ogl3(modelFilename, 0, -1);
-	}
-
-	if(index >= 0)
-		return 1; // model is loaded
-	else
-		return 0; // model is NOT loaded
-}
-
-
-/** Given a model file, load the model (if it hasn't been loaded
- * already) and render that file using OpenGL 3. The preprocessor
- * variable KUHL_UTIL_USE_ASSIMP must be defined to use this function.
- *
- * @param modelFilename The filename of the model.
- *
- * @param textureDirname The directory that the model's textures are
- * saved in. If set to NULL, the textures are assumed to be in the
- * same directory as the model is in.
- *
- * @param program The GLSL program to draw the model with.
- *
- * @return Returns 1 if successful and 0 if we failed to load the model.
- */
-int kuhl_draw_model_file_ogl3(const char *modelFilename, const char *textureDirname, GLuint program)
-{
-	/* Try to load the model. */
-	if(kuhl_load_model_file_ogl3(modelFilename, textureDirname, program))
-	{
-		int index = kuhl_private_modelIndex(modelFilename);
-		if(index < 0) /* This shouldn't happen because we should have successfully loaded the model */
-			return 0;
-
-		sceneMapStruct *sm = &(sceneMap[index]);
-		for(int i=0; i < sm->geom_count; i++)
-			kuhl_geometry_draw(&(sm->geom[i]));
-		
-		return 1; /* Successfully loaded and drew model */
-	}
-	else
-		return 0; /* Failed to load the model */
-	
-	/* TODO: Think about proving a way for a user to cleanup models
-	   appropriately. We would call these two functions: */
-	// aiReleaseImport(scene);
-	// aiDetachAllLogStreams();
-}
-
-/** Get an aiScene struct so the developer can inspect the information
- * in the struct (such as the number of animations, animation length,
- * etc).
- */
-const struct aiScene* kuhl_model_file_aiScene(const char *modelFilename)
-{
-	int index = kuhl_private_modelIndex(modelFilename);
-	if(index < 0)
+		printf("%s: ASSIMP was unable to import the model file.\n", modelFilename);
 		return NULL;
-	sceneMapStruct *sm = &(sceneMap[index]);
-	return sm->scene;
-}
-
-
-/** Returns the bounding box for a model file.
- *
- * @param modelFilename The 3D model file that you want the bounding box for.
- *
- * @param min An array to be filled with the smallest X,Y,Z values in the model.
- *
- * @param max An array to be filled with the largest X,Y,Z values in the model.
- *
- * @param center An array to be filled with the center coordinate of the bounding box.
- *
- * @return Returns 1 if successful or 0 if the model hasn't yet been loaded or drawn.
- */
-int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3], float center[3])
-{
-	int index = kuhl_private_modelIndex(modelFilename);
-	if(index < 0)
-	{
-		/* Set the values to 0 if the model hasn't been loaded
-		 * yet. This helps prevent a user from using uninitialized
-		 * variables in his or her calculations. */
-		vec3f_set(min, 0,0,0);
-		vec3f_set(max, 0,0,0);
-		vec3f_set(center, 0,0,0);
-		return 0;
 	}
 
-	vec3f_copy(min,    sceneMap[index].bb_min);
-	vec3f_copy(max,    sceneMap[index].bb_max);
-	vec3f_copy(center, sceneMap[index].bb_center);
-	return 1;
+	// Convert the information in aiScene into a kuhl_geometry object.
+	float transform[16];
+	mat4f_identity(transform);
+	kuhl_geometry *ret = kuhl_private_load_model(scene, scene->mRootNode,
+	                                             program, transform);
+
+	/* Ensure model shows up in bind pose if the caller doesn't
+	 * also call kuhl_update_model(). */
+	kuhl_update_model(ret, 0, -1);
+
+	/* Calculate bounding box information for the model */
+	float bboxLocal[6];
+	kuhl_private_calc_bbox(scene->mRootNode, NULL, scene, bboxLocal);
+	float min[3],max[3],ctr[3];
+	vec3f_set(min, bboxLocal[0], bboxLocal[2], bboxLocal[4]);
+	vec3f_set(max, bboxLocal[1], bboxLocal[3], bboxLocal[5]);
+	vec3f_add_new(ctr, min, max);
+	vec3f_scalarDiv(ctr, 2);
+
+	/* Print bounding box information to stdout */
+	printf("%s: Bounding box min: ", modelFilename);
+	vec3f_print(min);
+	printf("%s: Bounding box max: ", modelFilename);
+	vec3f_print(max);
+	printf("%s: Bounding box ctr: ", modelFilename);
+	vec3f_print(ctr);
+
+	/* If the user requested bounding box information, give it to
+	 * them. */
+	if(bbox != NULL)
+	{
+		for(int i=0; i<6; i++)
+			bbox[i] = bboxLocal[i];
+	}
+	return ret;
 }
 #endif // KUHL_UTIL_USE_ASSIMP
+
+
+/* Create a matrix scale+translation matrix which shrinks the model to
+ * fit into a 1x1x1 box.
+ *
+ * @param result The resulting transformation matrix.
+ *
+ * @param bbox The bounding box information (xmin, xmax, ymin, etc.)
+ *
+ * @param sitOnXZPlane If 1, the box will be translated so that the
+ * model sits on the XZ plane.
+ */
+void kuhl_bbox_fit(float result[16], const float bbox[6], int sitOnXZPlane)
+{
+	/* Calculate the width/height/depth of the bounding box and
+	 * determine which one of the three is the largest. Then, scale
+	 * the scene by 1/(largest value) to ensure that it fits in our
+	 * view frustum. */
+	float min[3], max[3], ctr[3];
+	vec3f_set(min, bbox[0], bbox[2], bbox[4]);
+	vec3f_set(max, bbox[1], bbox[3], bbox[5]);
+	vec3f_add_new(ctr, min, max);
+	vec3f_scalarDiv(ctr, 2);
+
+	/* Figure out which dimension is the biggest part of the box */
+	float width  = max[0]-min[0];
+	float height = max[1]-min[1];
+	float depth  = max[2]-min[2];
+	float biggestSize = width;
+	if(height > biggestSize)
+		biggestSize = height;
+	if(depth > biggestSize)
+		biggestSize = depth;
+
+	float scaleBoundBox[16], moveToOrigin[16];
+	/* Scale matrix */
+	mat4f_scale_new(scaleBoundBox, 1.0f/biggestSize, 1.0f/biggestSize, 1.0f/biggestSize);
+	//printf("Scaling by factor %f\n", 1.0/biggestSize); 
+
+	/* Translate matrix */
+	if(sitOnXZPlane == 0)
+		mat4f_translate_new(moveToOrigin, -ctr[0], -ctr[1], -ctr[2]); // move to origin
+	else
+		/* Place the bounding box on top of the origin */
+		mat4f_translate_new(moveToOrigin, -ctr[0], -ctr[1]+height/2.0f, -ctr[2]);
+
+	mat4f_mult_mat4f_new(result, scaleBoundBox, moveToOrigin);
+}
+
 
 /* Creates a new framebuffer object (with a depth buffer) that we can
  * render to and therefore render directly to a texture.
@@ -4726,11 +2975,9 @@ int kuhl_model_bounding_box(const char *modelFilename, float min[3], float max[3
  */
 GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depthTexture)
 {
-	GLint origBoundTexture;
-	glGetIntegerv(GL_TEXTURE_BINDING_2D, &origBoundTexture);
-	GLint origBoundFrameBuffer;
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, &origBoundFrameBuffer);
-	GLint origBoundRenderBuffer;
+	GLint origBoundTexture,origBoundFrameBuffer,origBoundRenderBuffer;;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D,   &origBoundTexture);
+	glGetIntegerv(GL_FRAMEBUFFER_BINDING,  &origBoundFrameBuffer);
 	glGetIntegerv(GL_RENDERBUFFER_BINDING, &origBoundRenderBuffer);
 	
 	// set up texture
@@ -4738,7 +2985,8 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	{
 		glGenTextures(1, texture);
 		glBindTexture(GL_TEXTURE_2D, *texture);
-		glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, width, height, 0, GL_RGB,
+		             GL_UNSIGNED_BYTE, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -4748,7 +2996,8 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	{
 		glGenTextures(1, depthTexture);
 		glBindTexture(GL_TEXTURE_2D, *depthTexture);
-		glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT, width, height, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT, width, height, 0,
+		             GL_DEPTH_COMPONENT, GL_FLOAT, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -4781,6 +3030,9 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 		                       *texture,      // texture id
 		                       0);            // mipmap level
 	}
+	else
+		glDrawBuffer(GL_NONE);
+
 	kuhl_errorcheck();
 
 	if(depthTexture != NULL)
@@ -4793,10 +3045,41 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	}
 	kuhl_errorcheck();
 
-	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(fbStatus != GL_FRAMEBUFFER_COMPLETE)
 	{
-		printf("%s: Unable to set up framebuffer\n", __func__);
-		exit(1);
+		printf("%s: glCheckFramebufferStatus() indicated a the following problem with the framebuffer:\n", __func__);
+		switch(fbStatus)
+		{
+			case GL_FRAMEBUFFER_UNDEFINED:
+				printf("%s: GL_FRAMEBUFFER_UNDEFINED\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_UNSUPPORTED:
+				printf("%s: GL_FRAMEBUFFER_UNSUPPORTED\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n", __func__);
+				break;
+			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+				printf("%s: GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n", __func__);
+				break;
+			default:
+				printf("%s: Unknown error.\n", __func__);
+				break;
+		}
+		exit(EXIT_FAILURE);
 	}
 	kuhl_errorcheck();
 
@@ -4860,7 +3143,10 @@ static float fps_now=-1; /**< Current estimate of FPS? Used by kuhl_getfps() */
 
 /** When called every frame, estimates the frames per second.
  *
- * @param milliseconds The time in milliseconds relative to some fixed value. For example, if you are using GLUT, you can use glutGet(GLUT_ELAPSED_TIME) to get the time in milliseconds since your program started.
+ * @param milliseconds The time in milliseconds relative to some fixed
+ * value. For example, if you are using GLUT, you can use
+ * glutGet(GLUT_ELAPSED_TIME) to get the time in milliseconds since
+ * your program started.
  *
  * @return An estimate of the frames per second (updated every second).
  *

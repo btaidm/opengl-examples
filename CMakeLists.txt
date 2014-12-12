@@ -8,6 +8,42 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wall -Wextra -g -Wno-unused-para
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMakeModules)
 
+####################################
+# Edit the following areas to add or remove programs to compile
+#
+# If you add a new name here, there must be an .c file with the same
+# name that contains a main() function.
+####################################
+# Programs that need ASSIMP and ImageMagick
+set(NEED_ASSIMP_AND_IM  ogl3-assimp ogl3-slerp ogl3-explode)
+# Programs that only need ImageMagick
+set(NEED_IM ogl2-slideshow ogl2-texture ogl3-texture)
+# Programs that don't rely on libraries
+set(NEED_NOTHING ogl2-triangle ogl3-triangle ogl3-triangle-color ogl3-triangle-shade ogl3-prerend ogl3-picker)
+
+
+# use color messages
+include(${CMAKE_SOURCE_DIR}/CMakeModules/colorMessage.cmake)
+
+
+# Use glxinfo or glewinfo to determine OpenGL version if they are
+# available. Fail if a high enough version of OpenGL is not supported.
+find_file(GLXINFO glxinfo)
+find_file(GLEWINFO glewinfo)
+if(UNIX AND NOT APPLE AND (GLXINFO OR GLEWINFO))
+	execute_process(COMMAND ${GLXINFO} COMMAND grep "OpenGL core profile version string" COMMAND cut -d " " -f 6 OUTPUT_VARIABLE openglversion OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+	if(NOT openglversion AND GLEWINFO)
+		execute_process(COMMAND ${GLEWINFO} COMMAND grep "OpenGL version " COMMAND cut -d " " -f 3 OUTPUT_VARIABLE openglversion OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+	endif()
+
+	if(openglversion)
+		message("OpenGL core profile version - ${openglversion}")
+		if(openglversion VERSION_LESS "3.2")
+			message(WARNING "This software expect OpenGL version 3.2 or higher; some or all programs may fail to run correctly.")
+		endif()
+	endif()
+endif()
+
 
 # SITE_NAME sets the HOSTNAME variable to the name of this computer.
 SITE_NAME(HOSTNAME)
@@ -23,8 +59,6 @@ if(BUILD_DOCUMENTATION)
                      COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Doxyfile
                      SOURCES ${PROJECT_SOURCE_DIR}/Doxyfile)
 	# Add or remove 'ALL' after 'docs' above to enable/disable doxygen generation when running "make"
-	else()
-		message("Not creating Doxygen documents because doxygen was not found on this system.")
 	endif()
 endif()
 
@@ -46,7 +80,7 @@ include_directories(${GLUT_INCLUDE_DIR})
 
 # Make sure freeglut installation is new enough!
 include(CheckSymbolExists)
-if(NOT APPLE)
+if(UNIX AND NOT APPLE)
   CHECK_SYMBOL_EXISTS(GLUT_CORE_PROFILE "${GLUT_INCLUDE_DIR}/GL/freeglut.h;${GLUT_INCLUDE_DIR}/GL/freeglut_ext.h" FREEGLUT_NEW_ENOUGH)
   if(NOT FREEGLUT_NEW_ENOUGH)
     message(FATAL_ERROR "freeglut version 2.6 or higher is required.")
@@ -140,9 +174,6 @@ else()
 	set(MISSING_VRPN_DEFINITION "MISSING_VRPN")
 endif()
 
-
-
-
 # --- pthreads (required for DGR) ---
 find_package(Threads)
 # find_packge(Threads) seems to fail on CCSR, try to find it ourselves: 
@@ -151,128 +182,53 @@ find_package(Threads)
 #message("Last attempt to find pthreads: " ${CMAKE_THREAD_LIBS_INIT})
 #endif()
 
+
 # Collect libraries that all programs use together into one cmake variable
 set(COMMON_LIBRARIES ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES}  ${M_LIB})
 if(VRPN_FOUND)
 	set(COMMON_LIBRARIES ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES}  ${VRPN_LIBRARIES} ${M_LIB})
 endif()
 
-# === ogl2-triangle ===
-add_executable(ogl2-triangle ogl2-triangle.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl2-triangle ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl2-triangle PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-	
-# === ogl3-triangle ===
-# Demonstrates how to draw geometry; flat shading
-add_executable(ogl3-triangle ogl3-triangle.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl3-triangle ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl3-triangle PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
 
-# === ogl3-picker ===
-# Demonstrates how to select an object based on screen coordinates
-add_executable(ogl3-picker ogl3-picker.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl3-picker ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl3-picker PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-
-# === ogl3-triangle-shade ===
-# Demonstrates how to draw geometry; diffuse shading
-add_executable(ogl3-triangle-shade ogl3-triangle-shade.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl3-triangle-shade ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl3-triangle-shade PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-
-		
-# === ogl3-prerend ===
-add_executable(ogl3-prerend ogl3-prerend.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl3-prerend ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl3-prerend PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-
-
-# === ogl3-triangle-color ===
-# Demonstrates how to draw geometry and assign colors to vertices
-add_executable(ogl3-triangle-color ogl3-triangle-color.c kuhl-util.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-target_link_libraries(ogl3-triangle-color ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-set_target_properties(ogl3-triangle-color PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-
-# === ogl2-texture ===
-if(ImageMagick_FOUND)
-	add_executable(ogl2-texture ogl2-texture.c kuhl-util.c dgr.c mousemove.c imageio.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(ogl2-texture ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl2-texture PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-else()
-	message("Not compiling ogl2-texture because ImageMagick library was not found on this system.")
-endif()
-
-# === ogl3-texture ===
-# Demonstrates how to use textures.
-if(ImageMagick_FOUND)
-	add_executable(ogl3-texture ogl3-texture.c kuhl-util.c dgr.c mousemove.c imageio.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(ogl3-texture ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl3-texture PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-else()
-	message("Not compiling ogl3-texture because ImageMagick library was not found on this system.")
-endif()
-
-
-# === ogl2-slideshow ===
-if(ImageMagick_FOUND)
-	add_executable(ogl2-slideshow ogl2-slideshow.c dgr.c imageio.c kuhl-util.c projmat.c)
-	target_link_libraries(ogl2-slideshow ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl2-slideshow PROPERTIES COMPILE_DEFINITIONS "${MISSING_VRPN_DEFINITION}")
-else()
-	message("Not compiling ogl2-slideshow because ImageMagick library was not found on this system.")
-endif()
-
-
-# === ogl2-assimp ===
+# make compilation rule for all programs that need ASSIMP and ImageMagick
 if(ASSIMP_FOUND AND ImageMagick_FOUND)
-	add_executable(ogl2-assimp ogl2-assimp.c kuhl-util.c imageio.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(ogl2-assimp ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl2-assimp PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_ASSIMP;KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+	foreach(arg ${NEED_ASSIMP_AND_IM})
+		add_executable(${arg} ${arg}.c  kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp imageio.c)
+		target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
+		set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_ASSIMP;KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+	endforeach()
 else()
 	if(NOT ASSIMP_FOUND)
-		message("Not compiling ogl2-assimp because ASSIMP library was not found on this system.")
+		message(WARNING "ASSIMP library not found, not compiling: ${NEED_ASSIMP_AND_IM}")
 	endif()
 	if(NOT ImageMagick_FOUND)
-		message("Not compiling ogl2-assimp because ImageMagick library was not found on this system.")
+		message(WARNING "ImageMagick library not found, not compiling: ${NEED_ASSIMP_AND_IM}")	
 	endif()
 endif()
 
-# === ogl3-assimp ===
-if(ASSIMP_FOUND AND ImageMagick_FOUND)
-	add_executable(ogl3-assimp ogl3-assimp.c kuhl-util.c imageio.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(ogl3-assimp ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl3-assimp PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_ASSIMP;KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+# Make compilation rule for all programs that only need ImageMagick
+if(ImageMagick_FOUND)
+	foreach(arg ${NEED_IM})
+		add_executable(${arg} ${arg}.c kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp imageio.c)
+		target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ImageMagick_LIBRARIES})
+		set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+	endforeach()
 else()
-	if(NOT ASSIMP_FOUND)
-		message("Not compiling ogl3-assimp because ASSIMP library was not found on this system.")
-	endif()
-	if(NOT ImageMagick_FOUND)
-		message("Not compiling ogl3-assimp because ImageMagick library was not found on this system.")
-	endif()
+	message(WARNING "ImageMagick library not found, not compiling: ${NEED_IM}")
 endif()
 
-# === ogl3-slerp ===
-if(ASSIMP_FOUND AND ImageMagick_FOUND)
-	add_executable(ogl3-slerp ogl3-slerp.c kuhl-util.c imageio.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(ogl3-slerp ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
-	set_target_properties(ogl3-slerp PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_ASSIMP;KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-else()
-	if(NOT ASSIMP_FOUND)
-		message("Not compiling ogl3-slerp because ASSIMP library was not found on this system.")
-	endif()
-	if(NOT ImageMagick_FOUND)
-		message("Not compiling ogl3-slerp because ImageMagick library was not found on this system.")
-	endif()
-endif()
-	
+# Make compilation rule for all programs that don't need ImageMagick or ASSIMIP
+foreach(arg ${NEED_NOTHING})
+	add_executable(${arg} ${arg}.c kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
+	target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
+	set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+endforeach()
 
-
+# Build dgr-relay
 if(Threads_FOUND)
 	# === dgr-relay ===
 	add_executable(dgr-relay dgr-relay.cpp)
 	target_link_libraries(dgr-relay ${CMAKE_THREAD_LIBS_INIT})
 else()
-	message("Not compiling dgr-relay because pthreads was not found on this system.")
+	message(WARNING "Not compiling dgr-relay because pthreads was not found on this system.")
 endif()
-
-
