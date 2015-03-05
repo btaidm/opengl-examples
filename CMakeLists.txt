@@ -19,7 +19,7 @@ set(NEED_ASSIMP_AND_IM  ogl3-assimp ogl3-slerp ogl3-explode)
 # Programs that only need ImageMagick
 set(NEED_IM ogl2-slideshow ogl2-texture ogl3-texture)
 # Programs that don't rely on libraries
-set(NEED_NOTHING ogl2-triangle ogl3-triangle ogl3-triangle-color ogl3-triangle-shade ogl3-prerend ogl3-picker)
+set(NEED_NOTHING ogl2-triangle ogl3-triangle ogl3-triangle-color ogl3-triangle-shade ogl3-prerend ogl3-picker ogl3-teartest)
 
 
 # use color messages
@@ -48,7 +48,6 @@ endif()
 # SITE_NAME sets the HOSTNAME variable to the name of this computer.
 SITE_NAME(HOSTNAME)
 
-
 # Doxygen documentation
 option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" ON)
 if(BUILD_DOCUMENTATION)
@@ -56,8 +55,8 @@ if(BUILD_DOCUMENTATION)
 	if(DOXYGEN_FOUND)
 	#-- Add a custom target to run Doxygen when ever the project is built
 	add_custom_target (docs 
-                     COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_SOURCE_DIR}/Doxyfile
-                     SOURCES ${PROJECT_SOURCE_DIR}/Doxyfile)
+		COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile
+		SOURCES ${CMAKE_SOURCE_DIR}/Doxyfile)
 	# Add or remove 'ALL' after 'docs' above to enable/disable doxygen generation when running "make"
 	endif()
 endif()
@@ -81,10 +80,10 @@ include_directories(${GLUT_INCLUDE_DIR})
 # Make sure freeglut installation is new enough!
 include(CheckSymbolExists)
 if(UNIX AND NOT APPLE)
-  CHECK_SYMBOL_EXISTS(GLUT_CORE_PROFILE "${GLUT_INCLUDE_DIR}/GL/freeglut.h;${GLUT_INCLUDE_DIR}/GL/freeglut_ext.h" FREEGLUT_NEW_ENOUGH)
-  if(NOT FREEGLUT_NEW_ENOUGH)
-    message(FATAL_ERROR "freeglut version 2.6 or higher is required.")
-  endif()
+	CHECK_SYMBOL_EXISTS(GLUT_CORE_PROFILE "${GLUT_INCLUDE_DIR}/GL/freeglut.h;${GLUT_INCLUDE_DIR}/GL/freeglut_ext.h" FREEGLUT_NEW_ENOUGH)
+	if(NOT FREEGLUT_NEW_ENOUGH)
+		message(FATAL_ERROR "freeglut version 2.6 or higher is required.")
+	endif()
 endif()
 
 # --- GLEW ---
@@ -109,7 +108,7 @@ include_directories(${GLEW_INCLUDE_DIRS})
 include(CheckSymbolExists)
 CHECK_SYMBOL_EXISTS(GL_ARB_get_program_binary "${GLEW_INCLUDE_DIRS}/GL/glew.h" GLEW_NEW_ENOUGH)
 if(NOT GLEW_NEW_ENOUGH)
-  message(FATAL_ERROR "glew version 1.5.6 or higher is required.")
+	message(FATAL_ERROR "glew version 1.5.6 or higher is required.")
 endif()
 
 # --- ImageMagick (recommended, optional) ---
@@ -127,7 +126,11 @@ find_package(ImageMagick COMPONENTS MagickCore)
 
 if(ImageMagick_FOUND)
 	include_directories(${ImageMagick_INCLUDE_DIRS})
+	set(IMAGEMAGICK_FOUND_DEFINITION "KUHL_UTIL_USE_IMAGEMAGICK")
+else()
+	set(IMAGEMAGICK_FOUND_DEFINITION "")
 endif()
+
 
 
 # --- ASSIMP (recommended, optional) ---
@@ -143,8 +146,11 @@ set(CMAKE_INCLUDE_PATH /home/campus11/kuhl/public-cs4611/assimp/include ${CMAKE_
 
 
 find_package(ASSIMP)
-if(ASSIMP_FOUND)
+if(ASSIMP_FOUND AND ImageMagick_FOUND)  # only use Assimp if imagemagick is also found (imagemagick is needed for textures)
 	include_directories(${ASSIMP_INCLUDE_DIRS})
+	set(ASSIMP_FOUND_DEFINITION "KUHL_UTIL_USE_ASSIMP")
+else()
+	set(ASSIMP_FOUND_DEFINITION "")
 endif()
 
 
@@ -183,46 +189,75 @@ find_package(Threads)
 #endif()
 
 
+# --- LibOVR (Oculus Rift) ---
+# Rekhi Linux lab
+set(CMAKE_LIBRARY_PATH "/home/campus11/kuhl/public-cs4611/ovr_sdk_linux_0.4.4/LibOVR/Lib/Linux/Release/x86_64" ${CMAKE_LIBRARY_PATH})
+set(CMAKE_INCLUDE_PATH "/home/campus11/kuhl/public-cs4611/ovr_sdk_linux_0.4.4/LibOVR/Include" ${CMAKE_INCLUDE_PATH})
+set(CMAKE_INCLUDE_PATH "/home/campus11/kuhl/public-cs4611/ovr_sdk_linux_0.4.4/LibOVR/Src" ${CMAKE_INCLUDE_PATH})
+# Installed in this directory's parent directory
+set(CMAKE_LIBRARY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../ovr_sdk_linux_0.4.4/LibOVR/Lib/Linux/Release/x86_64" ${CMAKE_LIBRARY_PATH})
+set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../ovr_sdk_linux_0.4.4/LibOVR/Include" ${CMAKE_INCLUDE_PATH})
+set(CMAKE_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../ovr_sdk_linux_0.4.4/LibOVR/Src" ${CMAKE_INCLUDE_PATH})
+
+find_package(OVR)
+if(OVR_FOUND)
+	include_directories(${OVR_INCLUDE_DIRS})
+	set(MISSING_OVR_DEFINITION "")
+else()
+	set(MISSING_OVR_DEFINITION "MISSING_OVR")
+endif()
+
+
 # Collect libraries that all programs use together into one cmake variable
-set(COMMON_LIBRARIES ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES}  ${M_LIB})
-if(VRPN_FOUND)
-	set(COMMON_LIBRARIES ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES}  ${VRPN_LIBRARIES} ${M_LIB})
+set(COMMON_LIBRARIES ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${M_LIB})
+if(VRPN_FOUND)  # Add VRPN to the list if it is available
+	set(COMMON_LIBRARIES ${COMMON_LIBRARIES} ${VRPN_LIBRARIES})
+endif()
+if(OVR_FOUND) # Add Oculus LibOVR to the list if it is available
+	set(COMMON_LIBRARIES ${COMMON_LIBRARIES} ${OVR_LIBRARIES})
 endif()
 
+# Set the preprocessor flags.
+set(PREPROC_DEFINE "MOUSEMOVE_GLUT;${ASSIMP_FOUND_DEFINITION};${IMAGEMAGICK_FOUND_DEFINITION};${MISSING_VRPN_DEFINITION};${MISSING_OVR_DEFINITION}")
 
-# make compilation rule for all programs that need ASSIMP and ImageMagick
-if(ASSIMP_FOUND AND ImageMagick_FOUND)
-	foreach(arg ${NEED_ASSIMP_AND_IM})
-		add_executable(${arg} ${arg}.c  kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp imageio.c)
-		target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
-		set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_ASSIMP;KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-	endforeach()
-else()
-	if(NOT ASSIMP_FOUND)
-		message(WARNING "ASSIMP library not found, not compiling: ${NEED_ASSIMP_AND_IM}")
-	endif()
-	if(NOT ImageMagick_FOUND)
-		message(WARNING "ImageMagick library not found, not compiling: ${NEED_ASSIMP_AND_IM}")	
-	endif()
-endif()
-
-# Make compilation rule for all programs that only need ImageMagick
+# Create a static library containing all files that we regularly use.
+include_directories("lib")
+set(FILES_IN_LIBKUHL lib/kuhl-util.c lib/vecmat.c lib/dgr.c lib/mousemove.c lib/hmd-dsight-orient.c lib/projmat.c lib/viewmat.c lib/vrpn-help.cpp)
 if(ImageMagick_FOUND)
-	foreach(arg ${NEED_IM})
-		add_executable(${arg} ${arg}.c kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp imageio.c)
-		target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ImageMagick_LIBRARIES})
-		set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "KUHL_UTIL_USE_IMAGEMAGICK;MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
-	endforeach()
+	set(FILES_IN_LIBKUHL ${FILES_IN_LIBKUHL} lib/imageio.c)
+endif()
+add_library(kuhl STATIC ${FILES_IN_LIBKUHL})
+set_target_properties(kuhl PROPERTIES COMPILE_DEFINITIONS "${PREPROC_DEFINE}")
+
+
+# Construct a list of programs that we want to compile based on which libraries are available.
+set(PROGRAMS_TO_MAKE ${NEED_NOTHING})
+if(ASSIMP_FOUND AND ImageMagick_FOUND)
+	set(PROGRAMS_TO_MAKE ${PROGRAMS_TO_MAKE} ${NEED_ASSIMP_AND_IM})
 else()
-	message(WARNING "ImageMagick library not found, not compiling: ${NEED_IM}")
+	message(WARNING "ASSIMP and/or ImageMagick libraries were not found, not compiling: ${NEED_ASSIMP_AND_IM}")
+endif()
+if(ImageMagick_FOUND)
+	set(PROGRAMS_TO_MAKE ${PROGRAMS_TO_MAKE} ${NEED_IM})
+else()
+	message(WARNING "ImageMagick library was not found, not compiling: ${NEED_IM}")
 endif()
 
-# Make compilation rule for all programs that don't need ImageMagick or ASSIMIP
-foreach(arg ${NEED_NOTHING})
-	add_executable(${arg} ${arg}.c kuhl-util.c vecmat.c dgr.c mousemove.c projmat.c viewmat.c vrpn-help.cpp)
-	target_link_libraries(${arg} ${COMMON_LIBRARIES} ${GLUT_LIBRARIES})
-	set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "MOUSEMOVE_GLUT;${MISSING_VRPN_DEFINITION}")
+# Compile the list of programs.
+foreach(arg ${PROGRAMS_TO_MAKE})
+	if(EXISTS ${arg}.cpp)   # Figure out if the program is a c or cpp file
+		set(SOURCE_FILE ${arg}.cpp)
+	else()
+		set(SOURCE_FILE ${arg}.c)
+	endif()
+	add_executable(${arg} ${SOURCE_FILE})
+	target_link_libraries(${arg} kuhl ${COMMON_LIBRARIES} ${GLUT_LIBRARIES} ${ASSIMP_LIBRARIES} ${ImageMagick_LIBRARIES})
+	set_target_properties(${arg} PROPERTIES LINKER_LANGUAGE "CXX")
+	set_target_properties(${arg} PROPERTIES COMPILE_DEFINITIONS "${PREPROC_DEFINE}")
+	add_dependencies(${arg} libkuhl.a)
 endforeach()
+
+
 
 # Build dgr-relay
 if(Threads_FOUND)
