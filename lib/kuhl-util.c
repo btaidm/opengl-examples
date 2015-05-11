@@ -15,7 +15,6 @@
 #include <GL/freeglut.h>
 #endif
 
-#define __GNU_SOURCE // make sure are allowed to use GNU extensions. Redundant if compiled with -std=gnu99
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +29,8 @@
 #include <signal.h>
 #endif
 
+#include "kuhl-nodep.h"
+
 #ifdef KUHL_UTIL_USE_ASSIMP
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
@@ -41,6 +42,11 @@
 #include "vecmat.h"
 #ifdef KUHL_UTIL_USE_IMAGEMAGICK
 #include "imageio.h"
+#else /* use STB image loading if ImageMagick isn't available' */
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #endif
 
 
@@ -51,172 +57,28 @@
 */
 void mat4f_from_aiMatrix4x4(float  dest[16], struct aiMatrix4x4 src)
 {
-	float *tmp = (float*) (&src);
-	for(int i=0; i<16; i++)
-		dest[i] = *(tmp+i);
+	memcpy(dest, &src, sizeof(float)*16);
 	mat4f_transpose(dest);
 }
 #endif
 
 
 /** Don't call this function, call kuhl_errorcheck() instead. */
-int kuhl_errorcheckFileLine(const char *file, int line)
+int kuhl_errorcheckFileLine(const char *file, int line, const char *func)
 {
 	GLenum errCode = glGetError();
 	if(errCode != GL_NO_ERROR)
 	{
-		fprintf(stderr, "!!!!! OpenGL Error !!!!! %s - occurred before %s:%d\n",
+		msg(ERROR, "OpenGL error '%s' occurred before %s:%d",
 		        gluErrorString(errCode), file, line);
 		return 1;
 	}
 	return 0;
 }
 
-/** Don't call this function, call kuhl_malloc() instead. */
-void *kuhl_mallocFileLine(size_t size, const char *file, int line)
-{
-	if(size == 0)
-		fprintf(stderr, "!!!!! malloc Warning !!!!! - Size 0 passed to malloc at %s:%d\n", file, line);
-	void *ret = malloc(size);
-	if(ret == NULL)
-		fprintf(stderr, "!!!!! malloc Error !!!!! - Failed to allocate %zu bytes at %s:%d\n", size, file, line);
-	return ret;
-}
 
-/** Checks if a file is readable or not.
 
- @param filename The file to check
- @return Returns 1 if we can read the file, 0 otherwise.
-*/
-int kuhl_can_read_file(const char *filename)
-{
-	FILE *f = fopen(filename, "r");
-	if(f == NULL)
-		return 0;
-	else
-	{
-		fclose(f);
-		return 1;
-	}
-}
 
-/* Given a filename, tries to find that file by:
-   1) Looking for the file using the given path.
-
-   2) Change '\' characters to '/' in case the provided path uses
-   Windows-style path separators.
-
-   3) Search for file relative to directory of executable (on Linux)
-
-   4) Combine possibilities 2 and 3 (on Linux)
-
-   @param filename The name of the file the caller wants to open.
-   @return A path to the file that may be different than the path
-   provided in the filename parameter. The returned string should be
-   free()'d. If the file was not found, a copy of the original
-   filename is returned.
-*/
-char* kuhl_find_file(const char *filename)
-{
-	if(kuhl_can_read_file(filename))
-		return strdup(filename);
-	
-	/* Try changing path separators from Windows style '\' to Linux
-	 * style '/'. */
-	char *pathSepChange = strdup(filename);
-	char *tmp = pathSepChange;
-	while(*tmp != '\0')
-	{
-		if(*tmp == '\\')
-			*tmp = '/';
-		tmp++;
-	}
-	if(kuhl_can_read_file(pathSepChange))
-		return pathSepChange;
-
-#ifdef __linux
-	/* If we can't open the filename directly, then try opening it
-	   with the full path based on the path to the
-	   executable. This allows us to more easily run programs from
-	   outside of the same directory that the executable that the
-	   executable resides without having to specify an absolute
-	   path to our shader programs. */
-	char exe[1024];
-	ssize_t len = readlink("/proc/self/exe", exe, 1023);
-	exe[len]='\0';
-	char *dir = dirname(exe);
-	char *newPathFile = malloc(sizeof(char)*1024);
-	snprintf(newPathFile, 1024, "%s/%s", dir, filename);
-	if(kuhl_can_read_file(newPathFile))
-	{
-		free(pathSepChange);
-		return newPathFile;
-	}
-	/* Try using executable directory along with the path that has
-	 * corrected file path separators */
-	snprintf(newPathFile, 1024, "%s/%s", dir, pathSepChange);
-	if(kuhl_can_read_file(newPathFile))
-	{
-		free(pathSepChange);
-		return newPathFile;
-	}
-#endif
-
-	free(pathSepChange);
-	return strdup(filename);
-}
-
-/** Reads a text file.
- *
- * @param filename The file that we want to read in.
- *
- * @return An array of characters for the file. This array should be
- * free()'d when the caller is finished with it. Exits if an error
- * occurs.
- */
-char* kuhl_text_read(const char *filename)
-{
-	int chunkSize    = 1024;        /* read in chunkSize bytes at a time */
-	int contentSpace = chunkSize;   /* space in 'content' array */
-
-	/* We add one more character to create room to store a '\0' at the
-	 * end. */
-	char *content = (char*) kuhl_malloc(sizeof(char)*(contentSpace+1));
-
-	/* Pointer to where next chunk should be stored */
-	char *contentLoc = content;
-
-	char *newFilename = kuhl_find_file(filename);
-	FILE *fp = fopen(newFilename,"rt");
-	free(newFilename);
-	int readChars;
-
-	if(fp == NULL)
-	{
-		fprintf(stderr, "ERROR: Can't open %s.\n", filename);
-		exit(EXIT_FAILURE);
-	}
-
-	do
-	{
-		readChars = fread(contentLoc, sizeof(char), chunkSize, fp);
-		contentLoc[readChars] = '\0';
-		contentSpace += chunkSize;
-		content = (char*) realloc(content, sizeof(char)*(contentSpace+1));
-		contentLoc = content + contentSpace - chunkSize;
-
-	} while( readChars == chunkSize );
-
-	/* We should now be at end of file. If not, there was an error. */
-	if(feof(fp) == 0)
-	{
-		fprintf(stderr, "ERROR: Can't read %s\n", filename);
-		exit(EXIT_FAILURE);
-	}
-
-	fclose(fp);
-	return content;
-}
 
 
 /** Creates a vertex of fragment shader from a file. This function
@@ -243,12 +105,12 @@ GLuint kuhl_create_shader(const char *filename, GLuint shader_type)
 	 * OpenGL to be guaranteed that the functions exist. */
 	if(shader_type == GL_FRAGMENT_SHADER && !glewIsSupported("GL_ARB_fragment_shader") && !glewIsSupported("GL_VERSION_2_0"))
 	{
-		fprintf(stderr, "%s: ERROR: glew said fragment shaders are not supported on this machine.\n", __func__);
+		msg(FATAL, "glew said fragment shaders are not supported on this machine.\n");
 		exit(EXIT_FAILURE);
 	}
 	if(shader_type == GL_VERTEX_SHADER && !glewIsSupported("GL_ARB_vertex_shader") && !glewIsSupported("GL_VERSION_2_0"))
 	{
-		fprintf(stderr, "%s: ERROR: glew said vertex shaders are not supported on this machine.\n", __func__);
+		msg(FATAL, "glew said vertex shaders are not supported on this machine.\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 
@@ -269,14 +131,17 @@ GLuint kuhl_create_shader(const char *filename, GLuint shader_type)
 	GLsizei actualLen = 0;
 	glGetShaderInfoLog(shader, 1024, &actualLen, logString);
 	if(actualLen > 0)
-		printf("%s Shader log:\n%s\n", shader_type == GL_VERTEX_SHADER ? "Vertex" : "Fragment", logString);
+		msg(WARNING, "%s Shader log for %s:\n%s\n", shader_type == GL_VERTEX_SHADER ? "Vertex" : "Fragment", filename, kuhl_trim_whitespace(logString));
 	kuhl_errorcheck();
 
 	/* If shader compilation wasn't successful, exit. */
 	GLint shaderCompileStatus = GL_FALSE;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &shaderCompileStatus);
 	if(shaderCompileStatus == GL_FALSE)
+	{
+		msg(FATAL, "Failed to compile '%s'\n", filename);
 		exit(EXIT_FAILURE);
+	}
 
 	return shader;
 }
@@ -293,43 +158,47 @@ void kuhl_print_program_info(GLuint program)
 	/* Attributes */
 	GLint numVarsInProg = 0;
 	glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &numVarsInProg);
-	printf("GLSL program %d: Active attributes: ", program);
+	char buf[1024] = "";
+	int buflen = 0;
+	buflen += snprintf(buf+buflen, 1024-buflen, "GLSL prog %d: Active attributes: ", program);
 	for(int i=0; i<numVarsInProg; i++)
 	{
-		char buf[1024];
+		char attribName[1024];
 		GLint arraySize = 0;
 		GLenum type = 0;
 		GLsizei actualLength = 0;
 
-		glGetActiveAttrib(program, i, 1024, &actualLength, &arraySize, &type, buf);
-		GLint location = glGetAttribLocation(program, buf);
-		printf("%s@%d ", buf, location);
+		glGetActiveAttrib(program, i, 1024, &actualLength, &arraySize, &type, attribName);
+		GLint location = glGetAttribLocation(program, attribName);
+		buflen += snprintf(buf+buflen, 1024-buflen, "%s@%d ", attribName, location);
 	}
 	if(numVarsInProg == 0)
-		printf("[none!]\n");
-	else
-		printf("\n");
+		printf("[none!]");
+
+	msg(INFO, "%s", buf);
+	
 	kuhl_errorcheck();
 	
 	numVarsInProg = 0;
 	glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numVarsInProg);
-	printf("GLSL program %d: Active uniforms: ", program);
+	buflen = 0;
+	buflen += snprintf(buf+buflen, 1024-buflen, "GLSL prog %d: Active uniforms: ", program);
 	for(int i=0; i<numVarsInProg; i++)
 	{
-		char buf[1024];
+		char attribName[1024];
 		GLint arraySize = 0;
 		GLenum type = 0;
 		GLsizei actualLength = 0;
 
-		glGetActiveUniform(program, i, 1024, &actualLength, &arraySize, &type, buf);
-		GLint location = glGetUniformLocation(program, buf);
-		printf("%s@%d ", buf, location);
+		glGetActiveUniform(program, i, 1024, &actualLength, &arraySize, &type, attribName);
+		GLint location = glGetUniformLocation(program, attribName);
+		buflen += snprintf(buf+buflen, 1024-buflen, "%s@%d ", attribName, location);
 	}
 	if(numVarsInProg == 0)
-		printf("[none!]\n");
-	else
-		printf("\n");
+		printf("[none!]");
 
+	msg(INFO, "%s", buf);
+	
 	kuhl_errorcheck();
 	
 	GLint attachedShaderCount=0;
@@ -338,7 +207,7 @@ void kuhl_print_program_info(GLuint program)
 	glGetProgramiv(program, GL_ATTACHED_SHADERS, &attachedShaderCount);
 	glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &binarySize);
 	glGetProgramiv(program, GL_DELETE_STATUS, &deleteStatus);
-	printf("GLSL program %d: AttachedShaderCount=%d Size=%d %s\n",
+	msg(INFO, "GLSL prog %d: AttachedShaderCount=%d Size=%d %s\n",
 	       program,
 	       attachedShaderCount, binarySize,
 	       deleteStatus   == GL_TRUE ? "DELETED!" : "");
@@ -355,7 +224,7 @@ void kuhl_delete_program(GLuint program)
 {
 	if(!glIsProgram(program))
 	{
-		printf("%s: Tried to delete a program (%d) that does not exist.", __func__, program);
+		msg(WARNING, "Tried to delete a program (%d) that does not exist.", program);
 		return;
 	}
 
@@ -386,7 +255,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 {
 	if(vertexFilename == NULL || fragFilename == NULL)
 	{
-		kuhl_errmsg("One or more of the parameters were NULL\n");
+		msg(ERROR, "One or more of the parameters were NULL\n");
 		return 0;
 	}
 
@@ -394,11 +263,11 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 	GLuint program = glCreateProgram();
 	if(program == 0)
 	{
-		fprintf(stderr, "%s: ERROR: Failed to create program.\n", __func__);
-		exit(1);
+		msg(FATAL, "Failed to create program.\n");
+		exit(EXIT_FAILURE);
 	}
-	printf("GLSL program %d: Creating vertex (%s) & fragment (%s) shaders\n",
-	       program, vertexFilename, fragFilename);
+	msg(INFO, "GLSL prog %d: Creating vertex (%s) & fragment (%s) shaders\n",
+	    program, vertexFilename, fragFilename);
 	
 	/* Create the shaders */
 	GLuint fragShader   = kuhl_create_shader(fragFilename, GL_FRAGMENT_SHADER);
@@ -422,7 +291,7 @@ GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename)
 	if(linked == GL_FALSE)
 	{
 		kuhl_print_program_log(program);
-		kuhl_errmsg("Failed to link GLSL program.\n");
+		msg(FATAL, "Failed to link GLSL program.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -445,7 +314,7 @@ void kuhl_print_program_log(GLuint program)
 	GLsizei actualLen = 0;
 	glGetProgramInfoLog(program, 1024, &actualLen, logString);
 	if(actualLen > 0)
-		printf("GLSL program log:\n%s\n", logString);
+		msg(WARNING, "GLSL program log:\n%s\n", logString);
 }
 
 
@@ -468,7 +337,7 @@ GLint kuhl_get_uniform(const char *uniformName)
 	kuhl_errorcheck();
 	if(uniformName == NULL || strlen(uniformName) == 0)
 	{
-		kuhl_errmsg("You asked for the location of an uniform name, but your name was an empty string or a NULL pointer.\n");
+		msg(ERROR, "You asked for the location of an uniform name, but your name was an empty string or a NULL pointer.\n");
 		return -1;
 	}
 
@@ -476,13 +345,13 @@ GLint kuhl_get_uniform(const char *uniformName)
 	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
 	if(currentProgram == 0)
 	{
-		kuhl_errmsg("Can't get the uniform location of %s because no GLSL program is currently being used.\n", uniformName);
+		msg(ERROR, "Can't get the uniform location of %s because no GLSL program is currently being used.\n", uniformName);
 		return -1;
 	}
 	
 	if(!glIsProgram(currentProgram))
 	{
-		kuhl_errmsg("The current active program (%d) is not a valid GLSL program.\n", currentProgram);
+		msg(ERROR, "The current active program (%d) is not a valid GLSL program.\n", currentProgram);
 		return -1;
 	}
 
@@ -490,12 +359,12 @@ GLint kuhl_get_uniform(const char *uniformName)
 	kuhl_errorcheck();
 	if(loc == -1 && missingUniformCount < 50)
 	{
-		kuhl_errmsg("Uniform variable '%s' is missing or inactive in your GLSL program.\n", uniformName);
+		msg(ERROR, "Uniform variable '%s' is missing or inactive in your GLSL program.\n", uniformName);
 		missingUniformCount++;
 		if(missingUniformCount == 50)
 		{
-			kuhl_errmsg("Hiding any additional error messages.\n");
-			kuhl_errmsg("Remember that the GLSL variables that do not affect the appearance of your program will be set to inactive by the GLSL compiler\n");
+			msg(ERROR, "Hiding any additional error messages.\n");
+			msg(ERROR, "Remember that the GLSL variables that do not affect the appearance of your program will be set to inactive by the GLSL compiler\n");
 		}
 	}
 	return loc;
@@ -518,12 +387,12 @@ GLint kuhl_get_attribute(GLuint program, const char *attributeName)
 {
 	if(attributeName == NULL || strlen(attributeName) == 0)
 	{
-		kuhl_errmsg("You asked for the location of an attribute name in program %d, but your name was an empty string or a NULL pointer.\n", program);
+		msg(ERROR, "You asked for the location of an attribute name in program %d, but your name was an empty string or a NULL pointer.\n", program);
 	}
 
 	if(!glIsProgram(program))
 	{
-		kuhl_errmsg("Program %d is not a valid GLSL program.\n", program);
+		msg(ERROR, "Program %d is not a valid GLSL program.\n", program);
 		exit(EXIT_FAILURE);
 	}
 
@@ -531,14 +400,14 @@ GLint kuhl_get_attribute(GLuint program, const char *attributeName)
 	glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
 	if(linkStatus == GL_FALSE)
 	{
-		kuhl_errmsg("Cannot get attribute '%s' from program %d because the program is not linked.\n", attributeName, program);
+		msg(ERROR, "Cannot get attribute '%s' from program %d because the program is not linked.\n", attributeName, program);
 	}
 	
 	GLint loc = glGetAttribLocation(program, attributeName);
 	kuhl_errorcheck();
 	if(loc == -1)
 	{
-		kuhl_errmsg("Attribute variable '%s' is missing or inactive in GLSL program %d.\n", attributeName, program);
+		msg(ERROR, "Attribute variable '%s' is missing or inactive in GLSL program %d.\n", attributeName, program);
 	}
 	return loc;
 }
@@ -561,9 +430,9 @@ static void kuhl_geometry_sanity_check_attribute(GLuint bufferobject, const char
 			/* All parts of this attribute should be set */
 			if(attributeName == NULL || bufferobject == 0)
 			{
-				kuhl_errmsg("Only part of the attribute was set:"
-				            "Name=%s bufferobject=%d\n",
-				            attributeName, bufferobject);
+				msg(FATAL, "Only part of the attribute was set:"
+				    "Name=%s bufferobject=%d\n",
+				    attributeName, bufferobject);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -576,7 +445,7 @@ static void kuhl_geometry_sanity_check_attribute(GLuint bufferobject, const char
 		 * bufferobject for the attribute. */
 		if(glIsBuffer(bufferobject))
 		{
-			kuhl_errmsg("We created a buffer object for attribute %s even though it isn't in the GLSL program %d\n", attributeName, program);
+			msg(ERROR, "We created a buffer object for attribute %s even though it isn't in the GLSL program %d\n", attributeName, program);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -597,14 +466,14 @@ static void kuhl_geometry_sanity_check(kuhl_geometry *geom)
 {
 	if(geom->program == 0)
 	{
-		kuhl_errmsg("The program element was not set in your kuhl_geometry struct. You must specify which GLSL program will be used with this geometry.\n");
+		msg(ERROR, "The program element was not set in your kuhl_geometry struct. You must specify which GLSL program will be used with this geometry.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	/* Check if the program is valid (we don't need to enable it here). */
 	if(!glIsProgram(geom->program))
 	{
-		kuhl_errmsg("The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", geom->program);
+		msg(ERROR, "The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", geom->program);
 		exit(EXIT_FAILURE);
 	}
 
@@ -618,14 +487,14 @@ static void kuhl_geometry_sanity_check(kuhl_geometry *geom)
 	if(validated == GL_FALSE)
 	{
 		kuhl_print_program_log(geom->program);
-		kuhl_errmsg("Failed to validate GLSL program %d.\n", geom->program);
+		msg(ERROR, "Failed to validate GLSL program %d.\n", geom->program);
 		exit(EXIT_FAILURE);
 	}
 
 	
 	if(geom->vertex_count < 1)
 	{
-		kuhl_errmsg("vertex_count must be greater than 0.\n");
+		msg(ERROR, "vertex_count must be greater than 0.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -637,7 +506,7 @@ static void kuhl_geometry_sanity_check(kuhl_geometry *geom)
 	     geom->primitive_type == GL_TRIANGLE_FAN ||
 	     geom->primitive_type == GL_TRIANGLES))
 	{
-		kuhl_errmsg("primitive_type must be set to GL_POINTS, GL_LINE_STRIP, GL_LINE_LOOP, GL_LINES, GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, or GL_TRIANGLES.\n");
+		msg(ERROR, "primitive_type must be set to GL_POINTS, GL_LINE_STRIP, GL_LINE_LOOP, GL_LINES, GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, or GL_TRIANGLES.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -762,22 +631,22 @@ void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name
 {
 	if(name == NULL || strlen(name) == 0)
 	{
-		kuhl_warnmsg("GLSL variable name was NULL or the empty string.\n");
+		msg(WARNING, "GLSL variable name was NULL or the empty string.\n");
 		return;
 	}
 	if(geom == NULL)
 	{
-		kuhl_warnmsg("Geometry struct is null while trying to set texture %s.\n", name);
+		msg(WARNING, "Geometry struct is null while trying to set texture %s.\n", name);
 		return;
 	}
 	if(texture == 0)
 	{
-		kuhl_warnmsg("Texture was set to 0 while trying to set texture %s\n", name);
+		msg(WARNING, "Texture was set to 0 while trying to set texture %s\n", name);
 		return;
 	}
 	if(!glIsTexture(texture))
 	{
-		kuhl_warnmsg("You tried to set the texture to an invalid texture %d (detected while trying to set texture %s)\n", texture, name);
+		msg(WARNING, "You tried to set the texture to an invalid texture %d (detected while trying to set texture %s)\n", texture, name);
 		return;
 	}
 
@@ -786,7 +655,7 @@ void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name
 	
 	if(!glIsVertexArray(geom->vao))
 	{
-		kuhl_warnmsg("This geometry object has an invalid vertex array object %d (detected while setting texture %s)\n", geom->vao, name);
+		msg(WARNING, "This geometry object has an invalid vertex array object %d (detected while setting texture %s)\n", geom->vao, name);
 		return;
 	}
 	
@@ -796,7 +665,7 @@ void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name
 	if(samplerLocation == -1)
 	{
 		if(kg_options & KG_WARN)
-			kuhl_warnmsg("Texture sampler '%s' was missing in GLSL program %d.\n", name, geom->program);
+			msg(WARNING, "Texture sampler '%s' was missing in GLSL program %d.\n", name, geom->program);
 		return;
 	}
 
@@ -822,7 +691,7 @@ void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name
 	/* If we are writing past the end of the array. */
 	if(destIndex == MAX_TEXTURES)
 	{
-		kuhl_errmsg("You tried to add more than %d textures to a kuhl_geometry object\n", MAX_TEXTURES);
+		msg(ERROR, "You tried to add more than %d textures to a kuhl_geometry object\n", MAX_TEXTURES);
 		exit(EXIT_FAILURE);
 	}
 
@@ -950,7 +819,7 @@ void kuhl_geometry_program(kuhl_geometry *geom, GLuint program, int kg_options)
 
 	if(!glIsProgram(program))
 	{
-		kuhl_warnmsg("GLSL program %d is not a valid program.\n",program);
+		msg(WARNING, "GLSL program %d is not a valid program.\n",program);
 	}
 	
 	geom->program = program;
@@ -1012,29 +881,29 @@ void kuhl_geometry_attrib(kuhl_geometry *geom, const GLfloat *data, GLuint compo
 {
 	if(name == NULL || strlen(name) == 0)
 	{
-		kuhl_warnmsg("GLSL variable name was NULL or the empty string.\n");
+		msg(WARNING, "GLSL variable name was NULL or the empty string.\n");
 		return;
 	}
 	if(geom == NULL)
 	{
-		kuhl_warnmsg("Geometry struct is null while trying to set attribute %s.\n",name);
+		msg(WARNING, "Geometry struct is null while trying to set attribute %s.\n",name);
 		return;
 	}
 	if(data == NULL)
 	{
-		kuhl_warnmsg("data array is null while trying to set attribute %s.\n",
+		msg(WARNING, "data array is null while trying to set attribute %s.\n",
 		             name);
 		return;
 	}
 	if(components == 0)
 	{
-		kuhl_warnmsg("Components was 0 while trying to set attribute %s.\n",
+		msg(WARNING, "Components was 0 while trying to set attribute %s.\n",
 		             name);
 		return;
 	}
 	if(!glIsVertexArray(geom->vao))
 	{
-		kuhl_warnmsg("This geometry object has an invalid vertex array object %d (detected while setting attribute %s)\n", geom->vao, name);
+		msg(WARNING, "This geometry object has an invalid vertex array object %d (detected while setting attribute %s)\n", geom->vao, name);
 		return;
 	}
 
@@ -1044,7 +913,7 @@ void kuhl_geometry_attrib(kuhl_geometry *geom, const GLfloat *data, GLuint compo
 	if(attribLocation == -1)
 	{
 		if(warnIfAttribMissing)
-			kuhl_warnmsg("Attribute '%s' was missing in geometry object.\n",
+			msg(WARNING, "Attribute '%s' was missing in geometry object.\n",
 			             name);
 		return;
 	}
@@ -1168,13 +1037,13 @@ void kuhl_geometry_new(kuhl_geometry *geom, GLuint program, unsigned int vertexC
 	/* Check if the program is valid (we don't need to enable it here). */
 	if(!glIsProgram(program))
 	{
-		kuhl_errmsg("The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", geom->program);
+		msg(ERROR, "The program you specified in your kuhl_geometry struct (%d) is not a valid GLSL program.\n", geom->program);
 		exit(EXIT_FAILURE);
 	}
 
 	if(vertexCount == 0)
 	{
-		kuhl_warnmsg("You are creating a geometry object with a vertexCount of 0.\n");
+		msg(WARNING, "You are creating a geometry object with a vertexCount of 0.\n");
 	}
 
 	geom->program = program;
@@ -1526,8 +1395,7 @@ void kuhl_geometry_delete(kuhl_geometry *geom)
 }
 
 
-
-/** Converts an array containing RGBA image data into an OpenGL texture.
+/** Converts an array containing RGBA image data into an OpenGL texture using the specified wrapping parameters.
  *
  * @param array Contains a row-major list of pixels in R, G, B, A
  * format starting from the bottom left corner of the image. Each
@@ -1537,13 +1405,17 @@ void kuhl_geometry_delete(kuhl_geometry *geom)
  *
  * @param height The height of the image represented by the array in pixels.
  *
+ * @param wrapS The wrapping texture parameter to apply to GL_TEXTURE_WRAP_S.
+ *
+ * @param wrapT The wrapping texture parameter to apply to GL_TEXTURE_WRAP_T.
+ *
  * @return The texture name that you can use with glBindTexture() to
  * enable this particular texture when drawing. When you are done with
  * the texture, use glDeleteTextures(1, &textureName) where
  * textureName is set to the value returned by this function. Returns
  * 0 on error.
  */
-GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
+GLuint kuhl_read_texture_rgba_array_wrap(const unsigned char* array, int width, int height, GLuint wrapS, GLuint wrapT)
 {
 	GLuint texName = 0;
 	if(!GLEW_VERSION_2_0)
@@ -1558,8 +1430,8 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
 	kuhl_errorcheck();
 	glGenTextures(1, &texName);
 	glBindTexture(GL_TEXTURE_2D, texName);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	kuhl_errorcheck();
@@ -1578,7 +1450,7 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
 		float maxAniso;
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maxAniso);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
-		printf("Anisotropic filtering: Available, set to maximum value (%0.1f)\n",
+		msg(DEBUG, "Anisotropic filtering: Available, set to maximum value (%0.1f)\n",
 		       maxAniso);
 	}
 
@@ -1594,10 +1466,10 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
 	glGetTexLevelParameteriv(GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &tmp);
 	if(tmp == 0)
 	{
-		fprintf(stderr, "%s: Unable to load %dx%d texture (possibily because it is too large)\n", __func__, width, height);
+		msg(ERROR, "Unable to load %dx%d texture (possibily because it is too large)\n", width, height);
 		GLint maxTextureSize = 0;
 		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
-		fprintf(stderr, "%s: Your card's rough estimate for the maximum texture size that it supports: %dx%d\n", __func__, maxTextureSize, maxTextureSize);
+		msg(ERROR, "Your card's rough estimate for the maximum texture size that it supports: %dx%d\n", maxTextureSize, maxTextureSize);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 		return 0;
@@ -1640,8 +1512,25 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
 	return texName;
 }
 
-
-#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+/** Converts an array containing RGBA image data into an OpenGL texture using clamping.
+ *
+ * @param array Contains a row-major list of pixels in R, G, B, A
+ * format starting from the bottom left corner of the image. Each
+ * pixel is a value form 0 to 255.
+ *
+ * @param width The width of the image represented by the array in pixels.
+ *
+ * @param height The height of the image represented by the array in pixels.
+ *
+ * @return The texture name that you can use with glBindTexture() to
+ * enable this particular texture when drawing. When you are done with
+ * the texture, use glDeleteTextures(1, &textureName) where
+ * textureName is set to the value returned by this function. Returns
+ * 0 on error.
+ */
+GLuint kuhl_read_texture_rgba_array(const unsigned char* array, int width, int height) {
+	return kuhl_read_texture_rgba_array_wrap(array, width, height, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+}
 
 /** Creates a texture from a string of text. For example, if you want
  * a texture that says "hello world" in red on a transparent
@@ -1663,40 +1552,55 @@ GLuint kuhl_read_texture_rgba_array(const char* array, int width, int height)
  *
  * @param pointsize The size of the text in points. Use a larger value for higher resolution text.
  *
- * @return The aspect ratio of the texture. If an error occurs, the function prints a message and exits. */
+ * @return The aspect ratio of the texture. texName is set to 0 and an aspect ratio of 1 is returned. */
 float kuhl_make_label(const char *label, GLuint *texName, float color[3], float bgcolor[4], float pointsize)
 {
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
 	int width = 0;
 	int height = 0;
-	char *image = image_label(label, &width, &height, color, bgcolor, pointsize);
+	unsigned char *image = (unsigned char*) image_label(label, &width, &height, color, bgcolor, pointsize);
 //	printf("Label texture dimensions: %d %d\n", width, height);
 	*texName = kuhl_read_texture_rgba_array(image, width, height);
 	free(image);
 	
 	if(*texName == 0)
-	{
-		fprintf(stderr, "Failed to create label: %s\n", label);
-		exit(EXIT_FAILURE);
-	}
+		return 1.0f;
 	return width/(float)height;
+#else
+	*texName = 0;
+	return 1.0f;
+#endif
 }
 
 
-/** Uses imageio to read in an image, and binds it to an OpenGL
- * texture name.  Requires OpenGL 2.0 or better. The preprocessor variable
- * KUHL_UTIL_USE_IMAGEMAGICK must be defined to use this function.
- *
- * @param filename name of file to load
- *
- * @param texName A pointer to where the OpenGL texture name should be stored.
- * (Remember that the "texture name" is really just some unsigned int).
- *
- * @returns The aspect ratio of the image in the file. Since texture
- * coordinates range from 0 to 1, the caller doesn't really need to
- * know how large the image actually is. Returns a negative number on
- * error.
- */
-float kuhl_read_texture_file(const char *filename, GLuint *texName)
+
+/** STB defaults with the first pixel at the upper left
+ * corner. OpenGL and other packages put the first pixel at the bottom
+ * left corner.  This code flips the image. */
+void kuhl_flip_texture_rgba_array(unsigned char *image, const int width, const int height, const int components) {
+	// printf("Flipping texture with width = %d, height = %d\n", width, height);
+	unsigned int bytesPerRow = components * width; // 1 byte per component
+	unsigned int pivot = height/2;
+	for (unsigned i = 0; i < pivot; ++i) 
+	{
+		unsigned char *lineTop = (image + i * bytesPerRow);
+		unsigned char *lineBottom = (image + (height - i - 1) * bytesPerRow);
+		// printf("Swapping %d with %d\n", i, height-i-1);
+		for (unsigned j = 0; j < bytesPerRow; ++j)
+		{
+			unsigned char a = *lineTop;
+			unsigned char b = *lineBottom;
+			*lineTop = b;
+			*lineBottom = a;
+			lineTop++;
+			lineBottom++;
+		}
+	}
+}
+
+
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+static float kuhl_read_texture_file_im(const char *filename, GLuint *texName, GLuint wrapS, GLuint wrapT)
 {
 	char *newFilename = kuhl_find_file(filename);
 	
@@ -1712,11 +1616,11 @@ float kuhl_read_texture_file(const char *filename, GLuint *texName)
 	iioinfo.type       = CharPixel;
 	iioinfo.map        = (char*) "RGBA";
 	iioinfo.colorspace = sRGBColorspace;
-	char *image = (char*) imagein(&iioinfo);
+	unsigned char *image = (unsigned char*) imagein(&iioinfo);
 	free(newFilename);
 	if(image == NULL)
 	{
-		fprintf(stderr, "%s: ERROR: Unable to read '%s'.\n", __func__, filename);
+		msg(ERROR, "Unable to read '%s'.\n", __func__, filename);
 		return -1;
 	}
 
@@ -1727,8 +1631,8 @@ float kuhl_read_texture_file(const char *filename, GLuint *texName)
 	int width  = (int)iioinfo.width;
 	int height = (int)iioinfo.height;
 	float aspectRatio = (float)width/height;
-    printf("%s: Finished reading, dimensions are %dx%d\n", filename, width, height);
-	*texName = kuhl_read_texture_rgba_array(image, width, height);
+	msg(DEBUG, "Finished reading '%s' (%dx%d)\n", filename, width, height);
+	*texName = kuhl_read_texture_rgba_array_wrap(image, width, height, wrapS, wrapT);
 
 	if(iioinfo.comment)
 		free(iioinfo.comment);
@@ -1736,18 +1640,105 @@ float kuhl_read_texture_file(const char *filename, GLuint *texName)
 	
 	if(*texName == 0)
 	{
-		fprintf(stderr, "%s: ERROR: Failed to create OpenGL texture from %s\n", __func__, filename);
+		msg(ERROR, "Failed to create OpenGL texture from %s\n", filename);
 		return -1;
 	}
 
 	return aspectRatio;
 }
+#else // KUHL_UTIL_USE_IMAGEMAGICK
 
-/** Takes a screenshot of the current OpenGL screen and writes it to an image file.
+static float kuhl_read_texture_file_stb(const char *filename, GLuint *texName, GLuint wrapS, GLuint wrapT)
+{
+	char *newFilename = kuhl_find_file(filename);
+	
+    /* It is generally best to just load images in RGBA8 format even
+     * if we don't need the alpha component. STB will fill the
+     * alpha component in correctly (opaque if there is no alpha
+     * component in the file or with the actual alpha data. For more
+     * information about why we use RGBA by default, see:
+     * http://www.opengl.org/wiki/Common_Mistakes#Image_precision
+     */
+	int width  = -1;
+	int height = -1;
+	int comp = -1;
+	int requestedComponents = STBI_rgb_alpha;
+	unsigned char *image = (unsigned char*) stbi_load(newFilename, &width, &height, &comp, requestedComponents);
+	free(newFilename);
+	if(image == NULL)
+	{
+		msg(ERROR, "Unable to read '%s'.\n", filename);
+		return -1;
+	}
+	kuhl_flip_texture_rgba_array(image, width, height, requestedComponents);
 
-    @param outputImageFilename The name of the image file that you want to record the screenshot in. The type of image file is determined by the filename extension. This function will allow you to write to any image format that ImageMagick supports. Suggestion: PNG files often work best for screenshots; try "output.png".
-*/
-void kuhl_screenshot(const char *outputImageFilename)
+	/* "image" is a 1D array of characters (unsigned bytes) with four
+	 * bytes for each pixel (red, green, blue, alpha). The data in "image"
+	 * is in row major order. The first 4 bytes are the color information
+	 * for the lowest left pixel in the texture. */
+	float aspectRatio = (float)width/height;
+	msg(DEBUG, "Finished reading '%s' (%dx%d)\n", filename, width, height);
+	*texName = kuhl_read_texture_rgba_array_wrap(image, width, height, wrapS, wrapT);
+	stbi_image_free(image);
+	
+	if(*texName == 0)
+	{
+		msg(ERROR, "Failed to create OpenGL texture from %s\n", filename);
+		return -1;
+	}
+
+	return aspectRatio;
+}
+#endif // end else part of ifdef KUHL_UTIL_USE_IMAGEMAGICK
+
+
+
+/** Uses imageio to read in an image, and binds it to an OpenGL
+ * texture name.  Requires OpenGL 2.0 or better.
+ *
+ * @param filename name of file to load
+ *
+ * @param texName A pointer to where the OpenGL texture name should be stored.
+ * (Remember that the "texture name" is really just some unsigned int).
+ *
+ * @param wrapS The wrapping texture parameter to apply to GL_TEXTURE_WRAP_S.
+ *
+ * @param wrapT The wrapping texture parameter to apply to GL_TEXTURE_WRAP_T.
+ *
+ * @returns The aspect ratio of the image in the file. Since texture
+ * coordinates range from 0 to 1, the caller doesn't really need to
+ * know how large the image actually is. Returns a negative number on
+ * error.
+ */
+float kuhl_read_texture_file_wrap(const char *filename, GLuint *texName, GLuint wrapS, GLuint wrapT)
+{
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+	return kuhl_read_texture_file_im(filename, texName, wrapS, wrapT);
+#else
+	return kuhl_read_texture_file_stb(filename, texName, wrapS, wrapT);
+#endif
+}
+
+/** Uses imageio to read in an image, and binds it to an OpenGL
+ * texture name.  Requires OpenGL 2.0 or better.
+ *
+ * @param filename name of file to load
+ *
+ * @param texName A pointer to where the OpenGL texture name should be stored.
+ * (Remember that the "texture name" is really just some unsigned int).
+ *
+ * @returns The aspect ratio of the image in the file. Since texture
+ * coordinates range from 0 to 1, the caller doesn't really need to
+ * know how large the image actually is. Returns a negative number on
+ * error.
+ */
+float kuhl_read_texture_file(const char *filename, GLuint *texName)
+{
+	return kuhl_read_texture_file_wrap(filename, texName, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+}
+
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+static void kuhl_screenshot_im(const char *outputImageFilename)
 {
 	// Get window size
 	int windowWidth  = glutGet(GLUT_WINDOW_WIDTH);
@@ -1774,6 +1765,54 @@ void kuhl_screenshot(const char *outputImageFilename)
 	imageout(&info_out, data);
 	free(info_out.filename); // cleanup
 }
+#else // KUHL_UTIL_USE_IMAGEMAGICK
+
+static void kuhl_screenshot_stb(const char *outputImageFilename)
+{
+	// Get window size
+	int windowWidth  = glutGet(GLUT_WINDOW_WIDTH);
+	int windowHeight = glutGet(GLUT_WINDOW_HEIGHT);
+	int comp = 3; // 3 = RGB, 4 = RGBA
+	int stride_in_bytes = windowWidth*comp*sizeof(char);
+	// Allocate space for data from window
+	unsigned char data[stride_in_bytes*windowHeight];
+	// Read pixels from the window
+	glReadPixels(0,0,windowWidth,windowHeight,
+	             GL_RGB,GL_UNSIGNED_BYTE, data);
+	kuhl_errorcheck();
+
+	kuhl_flip_texture_rgba_array(data, windowWidth, windowHeight, 3);
+
+	int ok=0;
+	const char *s = outputImageFilename;
+	if(strlen(s) > 4 && !strcmp(s + strlen(s) - 4, ".png"))
+		ok = stbi_write_png(s, windowWidth, windowHeight, comp, data, stride_in_bytes);
+	else if(strlen(s) > 4 && !strcmp(s + strlen(s) - 4, ".tga"))
+		ok = stbi_write_tga(s, windowWidth, windowHeight, comp, data);
+	else if(strlen(s) > 4 && !strcmp(s + strlen(s) - 4, ".bmp"))
+		ok = stbi_write_bmp(s, windowWidth, windowHeight, comp, data);
+	
+	if (!ok)
+	{
+		msg(FATAL, "Failed write screenshot to %s (note: STB can only write png, tga, and bmp files.)\n", outputImageFilename);
+		exit(EXIT_FAILURE);
+	}
+
+}
+#endif // end else part of ifdef KUHL_UTIL_USE_IMAGEMAGICK
+
+/** Takes a screenshot of the current OpenGL screen and writes it to an image file.
+
+    @param outputImageFilename The name of the image file that you want to record the screenshot in. The type of image file is determined by the filename extension. This function will allow you to write to any image format that ImageMagick supports. Suggestion: PNG files often work best for screenshots; try "output.png".
+*/
+void kuhl_screenshot(const char *outputImageFilename)
+{
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+	kuhl_screenshot_im(outputImageFilename);
+#else
+	kuhl_screenshot_stb(outputImageFilename);
+#endif
+}
 
 static int kuhl_video_record_frame = 0; // frame that we have recorded.
 static time_t kuhl_video_record_prev_sec = 0; // time of previous frame (seconds)
@@ -1797,7 +1836,13 @@ static suseconds_t kuhl_video_record_prev_usec = 0; // time of previous frame us
  */
 void kuhl_video_record(const char *fileLabel, int fps)
 {
-	// Get current time
+#ifdef KUHL_UTIL_USE_IMAGEMAGICK
+	char *exten = "tif";
+#else
+	char *exten = "bmp";
+#endif
+
+// Get current time
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 
@@ -1807,9 +1852,9 @@ void kuhl_video_record(const char *fileLabel, int fps)
 		kuhl_video_record_prev_usec = tv.tv_usec;
 		printf("%s: Recording %d frames per second\n", __func__, fps);
 		printf("Use either of the following commands to assemble Ogg video (Ogg video files are widely supported and not encumbered by patent restrictions):\n");
-		printf("ffmpeg -r %d -f image2 -i %s-%%08d.tif -qscale:v 7 %s.ogv\n", fps, fileLabel, fileLabel);
+		printf("ffmpeg -r %d -f image2 -i %s-%%08d.%s -qscale:v 7 %s.ogv\n", fps, fileLabel, exten, fileLabel);
 		printf(" - or -\n");
-		printf("avconv -r %d -f image2 -i %s-%%08d.tif -qscale:v 7 %s.ogv\n", fps, fileLabel, fileLabel);
+		printf("avconv -r %d -f image2 -i %s-%%08d.%s -qscale:v 7 %s.ogv\n", fps, fileLabel, exten, fileLabel);
 		printf("In either program, the -qscale:v parameter sets the quality: 0 (lowest) to 10 (highest)\n");
 	}
 
@@ -1831,16 +1876,12 @@ void kuhl_video_record(const char *fileLabel, int fps)
 		kuhl_video_record_prev_sec  = sec;
 		kuhl_video_record_prev_usec = usec;
 		char filename[1024];
-		snprintf(filename, 1024, "%s-%08d.tif", fileLabel, kuhl_video_record_frame);
-		kuhl_screenshot(filename);
+		snprintf(filename, 1024, "%s-%08d.%s", fileLabel, kuhl_video_record_frame, exten);
+		kuhl_screenshot(filename); // TODO: Should we check if the screenshot writes?
 		kuhl_video_record_frame++;
 	}
 
 }
-
-
-#endif // end use imagemagick
-
 
 #ifdef KUHL_UTIL_USE_ASSIMP
 
@@ -2083,10 +2124,10 @@ static void kuhl_print_aiScene_info(const char *modelFilename, const struct aiSc
 		       mesh->mNumVertices,
 		       mesh->mNumFaces,
 		       mesh->mNumBones,
-		       mesh->mNormals != NULL ? "yes" : "no ",
-		       mesh->mTangents != NULL ? "yes" : "no ",
-		       mesh->mBitangents != NULL ? "yes" : "no ",
-		       mesh->mTextureCoords != NULL ? "yes" : "no ",
+		       mesh->mNormals          != NULL ? "yes" : "no ",
+		       mesh->mTangents         != NULL ? "yes" : "no ",
+		       mesh->mBitangents       != NULL ? "yes" : "no ",
+		       mesh->mTextureCoords[0] != NULL ? "yes" : "no ", // mTextureCoords is an array of pointers
 		       mesh->mName.data
 			);
 
@@ -2101,6 +2142,53 @@ static void kuhl_print_aiScene_info(const char *modelFilename, const struct aiSc
 	int numNodes = kuhl_print_aiNode_info(modelFilename, scene->mRootNode);
 	printf("%s: Contains %d node(s) & %u mesh(es)\n", modelFilename, numNodes, scene->mNumMeshes);
 }
+
+
+/** Assimp doesn't store the full path to the textures. Here, we
+  assume that the texture path stored in the model is relative to the
+  directory the model is stored in. Or, if textureDir is provided, we
+  assume that the texture is relative to the textureDir path.
+
+    @param textureFile is the path to the texture stored in the model file.
+    
+    @param modelFile is the path to the model file. If textureDir is
+    NULL, we assume that the texture files are relative to this
+    directory.
+
+    @param textureDir is a path that the textures are supposedly
+    stored in. This is always used if it is non-NULL. It is ignored if
+    it is NULL.
+
+    @return A full path that specifies where the texture file should
+    be. The returned string should be free()'d.
+*/
+static char* kuhl_private_assimp_fullpath(const char *textureFile, const char *modelFile, const char *textureDir)
+{
+	if(textureFile == NULL || strlen(textureFile) == 0)
+	{
+		msg(ERROR, "textureFile was NULL or a zero character string.");
+		exit(EXIT_FAILURE);
+	}
+	
+	/* Construct a string with the directory that should contain the texture. */
+	char *fullpath = malloc(1024);
+	if(textureDir == NULL)
+	{
+		if(modelFile == NULL)
+		{
+			msg(ERROR, "modelFile was NULL");
+			exit(EXIT_FAILURE);
+		}
+		char *editable = strdup(modelFile);
+		char *dname = dirname(editable);
+		snprintf(fullpath, 1024, "%s/%s", dname, textureFile);
+		free(editable);
+	}
+	else
+		snprintf(fullpath, 1024, "%s/%s", textureDir, textureFile);
+	return fullpath;
+}
+
 
 /** Uses ASSIMP to load model (if needed) and returns ASSIMP aiScene
  * object. This function also reads texture files that the model
@@ -2119,10 +2207,12 @@ static void kuhl_print_aiScene_info(const char *modelFilename, const struct aiSc
 static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename, const char *textureDirname)
 {
 	/* If we get here, we need to add the file to the sceneMap. */
-
+	msg(INFO, "Loading model: %s\n", modelFilename);
 	/* Write assimp messages to command line */
 	struct aiLogStream stream;
-	stream = aiGetPredefinedLogStream(aiDefaultLogStream_STDOUT,NULL);
+	// stream = aiGetPredefinedLogStream(aiDefaultLogStream_STDOUT,NULL);
+	stream.callback = msg_assimp_callback;
+	stream.user = strdup(modelFilename); // memory leak
 	aiAttachLogStream(&stream);
 	
 	/* Try loading the model. We are using a postprocessing preset
@@ -2160,7 +2250,10 @@ static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename,
 	struct aiPropertyStore* propStore = aiCreatePropertyStore();
 	aiSetImportPropertyFloat(propStore, "PP_GSN_MAX_SMOOTHING_ANGLE", 50.0f);
 	// Import/load the model
-	const struct aiScene* scene = aiImportFileExWithProperties(modelFilenameVarying,aiProcessPreset_TargetRealtime_Quality, NULL, propStore);
+	int aiProcessFlags = aiProcess_Triangulate|aiProcess_SortByPType; // required! Use only these flags for fast loading.
+	// aiProcessFlags |= aiProcessPreset_TargetRealtime_Fast;    // a bit slower, adds additional processing
+	aiProcessFlags |= aiProcessPreset_TargetRealtime_Quality; // Does even more processing during model load.
+	const struct aiScene* scene = aiImportFileExWithProperties(modelFilenameVarying, aiProcessFlags, NULL, propStore);
 	free(modelFilenameVarying);
 	if(scene == NULL)
 		return NULL;
@@ -2168,13 +2261,13 @@ static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename,
 	/* Print warning messages if the model uses features that our code
 	 * doesn't support (even though ASSIMP might support them. */
 	if(scene->mNumCameras > 0)
-		printf("%s: WARNING: This model has %u camera(s) embedded in it that we are ignoring.\n",
+		msg(DEBUG, "%s: This model has %u camera(s) embedded in it that we are ignoring.\n",
 		       modelFilename, scene->mNumCameras);
 	if(scene->mNumLights > 0)
-		printf("%s: WARNING: This model has %u light(s) embedded in it that we are ignoring.\n",
+		msg(DEBUG, "%s: This model has %u light(s) embedded in it that we are ignoring.\n",
 		       modelFilename, scene->mNumLights);
 	if(scene->mNumTextures > 0)
-		printf("%s: WARNING: This model has %u texture(s) embedded in it. This program currently ignores embedded textures.\n",
+		msg(DEBUG, "%s: This model has %u texture(s) embedded in it. This program currently ignores embedded textures.\n",
 		       modelFilename, scene->mNumTextures);
 
 	// Uncomment this line to print additional information about the model:
@@ -2196,19 +2289,22 @@ static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename,
 		struct aiString path;
 		GLuint texIndex = 0;
 
-		if(aiGetMaterialTexture(scene->mMaterials[m], aiTextureType_DIFFUSE, texIndex, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS)
+
+		if(aiGetMaterialTexture(scene->mMaterials[m], aiTextureType_DIFFUSE,  texIndex, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS)
 		{
-			/* Construct a string with the directory that should contain the texture. */
-			char fullpath[1024];
-			if(textureDirname == NULL)
+			/* Don't load a texture that we have already loaded. */
+			char *fullpath = kuhl_private_assimp_fullpath(path.data, modelFilename, textureDirname);
+			int alreadyExists = 0;
+			for(int i=0; i<textureIdMapSize; i++)
 			{
-				char *editable = strdup(modelFilename);
-				char *dname = dirname(editable);
-				snprintf(fullpath, 1024, "%s/%s", dname, path.data);
-				free(editable);
+				if(strcmp(fullpath, textureIdMap[i].textureFileName) == 0)
+				{
+					alreadyExists=1;
+					break;
+				}
 			}
-			else
-				snprintf(fullpath, 1024, "%s/%s", textureDirname, path.data);
+			if(alreadyExists > 0) // no need to reload an already loaded texture
+				continue;
 
 			if(kuhl_read_texture_file(fullpath, &texIndex) < 0)
 			{
@@ -2223,9 +2319,47 @@ static const struct aiScene* kuhl_private_assimp_load(const char *modelFilename,
 				fprintf(stderr, "%s: You have loaded more textures than the hardcoded limit. Exiting.\n", __func__);
 				exit(EXIT_FAILURE);
 			}
-			textureIdMap[textureIdMapSize].textureFileName = strdup(path.data);
+			textureIdMap[textureIdMapSize].textureFileName = strdup(fullpath);
 			textureIdMap[textureIdMapSize].textureID = texIndex;
 			textureIdMapSize++;
+		}
+
+		/* If we failed to load a diffuse texture and there are no
+		 * other textures, we shouldn't print a
+		 * warning/error. However, if there is no diffuse and
+		 * other textures exist, print a message and exit so the
+		 * user knows that non-diffuse textures aren't going to be
+		 * loaded. */
+		#define TEX_TYPE_LEN 12
+		static const enum aiTextureType texTypeList[TEX_TYPE_LEN] = {
+			aiTextureType_DIFFUSE,   aiTextureType_SPECULAR,     aiTextureType_AMBIENT,
+			aiTextureType_EMISSIVE,  aiTextureType_HEIGHT,       aiTextureType_NORMALS,
+			aiTextureType_SHININESS, aiTextureType_OPACITY,      aiTextureType_DISPLACEMENT,
+			aiTextureType_LIGHTMAP,  aiTextureType_REFLECTION,   aiTextureType_UNKNOWN };
+		
+		static const char *texTypeListStr[TEX_TYPE_LEN] = {"DIFFUSE", "SPECULAR", "AMBIENT",
+		                                                   "EMISSIVE", "HEIGHT", "NORMALS",
+		                                                   "SHININESS","OPACITY","DISPLACEMENT",
+		                                                   "LIGHTMAP","REFLECTION","UNKNOWN" };
+
+		int textureCount = 0;
+		for(int i=1; i<TEX_TYPE_LEN; i++) // skip diffuse
+			textureCount += aiGetMaterialTextureCount(scene->mMaterials[m], texTypeList[i]);
+		if(textureCount > 0) // if there is a non-diffuse texture
+		{
+			char buf[1024] = "";
+			int buflen = 0;
+			buflen += snprintf(buf+buflen, 1024-buflen, "Ignoring some textures in material: ");
+			for(int i=1; i<TEX_TYPE_LEN; i++)
+			{
+				int count = aiGetMaterialTextureCount(scene->mMaterials[m], texTypeList[i]);
+				if(count > 0)
+					buflen += snprintf(buf+buflen, 1024-buflen, "%s=%d ", texTypeListStr[i], count);
+			}
+			msg(DEBUG, "%s", buf);
+
+			if(aiGetMaterialTextureCount(scene->mMaterials[m], texTypeList[0]) > 1)
+				msg(DEBUG, "The material also has more than one diffuse texture.\n");
 		}
 	}
 
@@ -2302,8 +2436,8 @@ static void kuhl_private_anim_matrix(float transformResult[16], const struct aiN
 	                            na->mRotationKeys[rotationEnd].mValue.z,
 	                            na->mRotationKeys[rotationEnd].mValue.w };
 	float rotationValMid[4];
-	vec4f_normalize(rotationValStart);
-	vec4f_normalize(rotationValEnd);
+	//vec4f_normalize(rotationValStart);
+	//vec4f_normalize(rotationValEnd);
 	quatf_slerp_new(rotationValMid, rotationValStart, rotationValEnd, factor);
 	float rotationMatrix[16];
 	mat4f_rotateQuatVec_new(rotationMatrix, rotationValMid);
@@ -2379,32 +2513,35 @@ static int kuhl_private_node_matrix(float transformResult[16],
 	 * requested animation matrix for this node. */
 	mat4f_from_aiMatrix4x4(transformResult, node->mTransformation);
 	
-	/* If the user requested an animation number that is too large
-	 * based on the number of the animations in the file, return use
-	 * the transformation matrix from the node. */
-	if(animationNum >= scene->mNumAnimations)
+	/* Return the transformation matrix from the node if: (1) The
+	 * requested animation number is too large. (2) A negative time
+	 * value is requested. */
+	if(animationNum >= scene->mNumAnimations || t < 0)
+		return 0;
+
+	struct aiAnimation *anim = scene->mAnimations[animationNum];
+
+	/* If the time value too large for the animation, return the
+	 * transformation matrix form the node. */
+	double currentTick = t * anim->mTicksPerSecond;
+	if(currentTick > anim->mDuration)
 		return 0;
 
 	/* Find the channel corresponding to the node name passed in as
 	 * parameter. */
-	struct aiAnimation *anim = scene->mAnimations[animationNum];
-	int channel = -1;
 	for(unsigned int i=0; i<anim->mNumChannels; i++)
 	{
 		if(strcmp(anim->mChannels[i]->mNodeName.data, node->mName.data) == 0)
-			channel = (int) i;
+		{
+			/* Get this node's matrix according to the animation
+			 * information. */
+			struct aiNodeAnim *na = anim->mChannels[i];
+			kuhl_private_anim_matrix(transformResult, na, currentTick);
+			return 1;
+		}
 	}
-	/* If we can't find a corresponding animation channel or if the
-	 * caller requested a time that was out of range, then return the
-	 * transformation matrix from the node. */
-	if(channel < 0 || t > anim->mDuration / anim->mTicksPerSecond || t < 0)
-		return 0;
 
-	/* Get this nodes matrix according to the animation
-	 * information. */
-	struct aiNodeAnim *na = anim->mChannels[channel];
-	kuhl_private_anim_matrix(transformResult, na, t*anim->mTicksPerSecond);
-	return 1;
+	return 0;
 }
 
 
@@ -2447,7 +2584,9 @@ kuhl_geometry* kuhl_geometry_append(kuhl_geometry *a, kuhl_geometry *b)
 static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
                                               const struct aiNode* nd,
                                               GLuint program,
-                                              float currentTransform[16])
+                                              float currentTransform[16],
+                                              const char* modelFilename,
+                                              const char* textureDirname)
 {
 	/* Each node in the scene has a transform matrix that should
 	 * affect all of the nodes under it. The currentTransform matrix
@@ -2511,18 +2650,18 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 		}
 		else if(mesh->mPrimitiveTypes & aiPrimitiveType_POLYGON)
 		{
-			printf("%s: WARNING: Mesh %u (%u/%u meshes in node \"%s\"): We only "
+			msg(WARNING, "Mesh %u (%u/%u meshes in node \"%s\"): We only "
 			       "support drawing triangle, line, or point meshes. "
 			       "This mesh contained polygons, and we are skipping it. "
 			       "To resolve this problem, ensure that the file is loaded "
 			       "with aiProcess_Triangulage to force ASSIMP to triangulate "
 			       "the model.\n",
-			       __func__, nd->mMeshes[n], n+1, nd->mNumMeshes, nd->mName.data);
+			       nd->mMeshes[n], n+1, nd->mNumMeshes, nd->mName.data);
 			continue;
 		}
 		else
 		{
-			printf("%s: ERROR: Unknown primitive type in mesh.\n", __func__);
+			msg(ERROR, "Unknown primitive type in mesh.\n");
 			continue;
 		}
 		
@@ -2568,16 +2707,20 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 		}
 
 		/* Store the vertex color attribute */
-		if(mesh->mColors != NULL && mesh->mColors[0] != NULL)
+		// Note: mesh->mColors is a C array, not a pointer
+		if(mesh->mColors[0] != NULL)
 		{
-			float *colors = kuhl_malloc(sizeof(float)*mesh->mNumVertices*3);
+			static const int colorComps = 3; // don't use alpha by default.
+			float *colors = kuhl_malloc(sizeof(float)*mesh->mNumVertices*colorComps);
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
 			{
-				colors[i*3+0] = mesh->mColors[0][i].r;
-				colors[i*3+1] = mesh->mColors[0][i].g;
-				colors[i*3+2] = mesh->mColors[0][i].b;
+				colors[i*colorComps+0] = mesh->mColors[0][i].r;
+				colors[i*colorComps+1] = mesh->mColors[0][i].g;
+				colors[i*colorComps+2] = mesh->mColors[0][i].b;
+				if(colorComps == 4)
+					colors[i*colorComps+3] = mesh->mColors[0][i].a;
 			}
-			kuhl_geometry_attrib(geom, colors, 3, "in_Color", 0);
+			kuhl_geometry_attrib(geom, colors, 4, "in_Color", 0);
 			free(colors);
 		}
 		/* If there are no vertex colors, try to use material colors instead */
@@ -2604,7 +2747,8 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 		}
 		
 		/* Store the texture coordinate attribute */
-		if(mesh->mTextureCoords != NULL && mesh->mTextureCoords[0] != NULL)
+		// Note: mesh->mTextureCoords is a C array, not a pointer
+		if(mesh->mTextureCoords[0] != NULL)
 		{
 			float *texCoord = kuhl_malloc(sizeof(float)*mesh->mNumVertices*2);
 			for(unsigned int i=0; i<mesh->mNumVertices; i++)
@@ -2687,8 +2831,12 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 		{
 			GLuint texture = 0;
 			for(int i=0; i<textureIdMapSize; i++)
-				if(strcmp(textureIdMap[i].textureFileName, texPath.data) == 0)
+			{
+				char *fullpath = kuhl_private_assimp_fullpath(texPath.data, modelFilename, textureDirname);
+				if(strcmp(textureIdMap[i].textureFileName, fullpath) == 0)
 					texture = textureIdMap[i].textureID;
+				free(fullpath);
+			}
 			if(texture == 0)
 			{
 				printf("%s: WARNING: Mesh %u uses texture '%s'. This texture should have been loaded earlier, but we can't find it now.\n",
@@ -2729,24 +2877,22 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 			kuhl_bonemat *bones = (kuhl_bonemat*) kuhl_malloc(sizeof(kuhl_bonemat));
 			bones->count = mesh->mNumBones;
 			bones->mesh = n;
-			for(unsigned int b=0; b < MAX_BONES; b++)
-				mat4f_identity(bones->matrices[b]);
 			for(unsigned int b=0; b < mesh->mNumBones; b++)
-			{
-				strncpy(bones->names[b], mesh->mBones[b]->mName.data, 256);
-				bones->names[b][255]='\0';
-			}
+				bones->boneList[b] = mesh->mBones[b];
+			// set any unused bone matrices to the identity.
+			for(unsigned int b=mesh->mNumBones; b < MAX_BONES; b++)
+				mat4f_identity(bones->matrices[b]);
 			geom->bones = bones;
 		}
 
-		printf("%s: Mesh #%03u is one of %u meshes in node \"%s\": numVertices=%d numIndices=%d primitiveType=%d hasNormals=%s hasColors=%s hasTexCoords=%s numBones=%d texture=%s\n",
-		       __func__, nd->mMeshes[n], nd->mNumMeshes, nd->mName.data,
+		msg(DEBUG, "Mesh #%03u in node \"%s\" (node has %d meshes): verts=%d indices=%d primType=%d normals=%s colors=%s texCoords=%s bones=%d tex=%s\n",
+		       nd->mMeshes[n], nd->mName.data, nd->mNumMeshes,
 		       mesh->mNumVertices,
 		       mesh->mNumFaces*meshPrimitiveType,
 		       meshPrimitiveType,
-		       mesh->mNormals       == NULL ? "no" : "yes",
-		       mesh->mColors==NULL || mesh->mColors[0]==NULL ? "no" : "yes",
-		       mesh->mTextureCoords == NULL ? "no" : "yes",
+		       mesh->mNormals       == NULL ? "n" : "y",
+		       mesh->mColors[0]==NULL ? "n" : "y", // mColors is an array of pointers
+		       mesh->mTextureCoords[0] == NULL ? "n" : "y",   // mTextureCoords is an array of pointers
 		       mesh->mNumBones,
 		       geom->texture_count == 0 ? "(null)" : texPath.data);
 	} // end for each mesh in node
@@ -2754,7 +2900,7 @@ static kuhl_geometry* kuhl_private_load_model(const struct aiScene *sc,
 	/* Process all of the meshes in the aiNode's children too */
 	for (unsigned int i = 0; i < nd->mNumChildren; i++)
 	{
-		kuhl_geometry *child_geom = kuhl_private_load_model(sc, nd->mChildren[i], program, currentTransform);
+		kuhl_geometry *child_geom = kuhl_private_load_model(sc, nd->mChildren[i], program, currentTransform, modelFilename, textureDirname);
 		first_geom = kuhl_geometry_append(first_geom, child_geom);
 	}
 
@@ -2788,26 +2934,32 @@ void kuhl_update_model(kuhl_geometry *first_geom, unsigned int animationNum, flo
 		/* If the geometry contains no animations, isn't associated
 		 * with an ASSIMP scene or node, then there is no need to try
 		 * to animate it. */
-		if(scene->mNumAnimations == 0 || scene == NULL || node == NULL)
+		if(scene == NULL || scene->mNumAnimations == 0 || node == NULL)
 			continue;
-		
-		/* Start at our current node and traverse up. Apply all of the
-		 * transformation matrices as we traverse up. */
-		float result[16];
-		mat4f_identity(result);
-		do
+
+		/* If there are no bones, or if a negative time value was
+		 * provided, update g->matrix. If there are bones, we assume
+		 * that the bones will drive the animation. */
+		if(g->bones == NULL )
 		{
-			float transform[16];
-			mat4f_identity(transform);
-			kuhl_private_node_matrix(transform, scene, node, animationNum, time);
-			mat4f_mult_mat4f_new(result, transform, result);
-			node = node->mParent;
-		} while(node != NULL);
+			/* Start at our current node and traverse up. Apply all of the
+			 * transformation matrices as we traverse up.
+			 *
+			 * TODO: By repeatedly traversing up, we repeatedly
+			 * recalculate the transformation matrices for the nodes
+			 * near the root---potentially reducing performance.
+			 */
+			mat4f_identity(g->matrix);
+			do
+			{
+				float transform[16];
+				kuhl_private_node_matrix(transform, scene, node, animationNum, time);
+				mat4f_mult_mat4f_new(g->matrix, transform, g->matrix);
+				node = node->mParent;
+			} while(node != NULL);
+		}
 
-		/* Apply the transform matrix to this geometry object. */
-		mat4f_copy(g->matrix, result);
-
-		/* If there are no bones, we are done with this kuhl_geometry */
+		/* Don't process bones if there aren't any. */
 		if(g->bones == NULL)
 			continue;
 
@@ -2815,29 +2967,35 @@ void kuhl_update_model(kuhl_geometry *first_geom, unsigned int animationNum, flo
 		for(int b=0; b < g->bones->count; b++) // For each bone
 		{
 			// Find the bone node and the bone itself.
-			const struct aiNode *node = kuhl_assimp_find_node(g->bones->names[b], scene->mRootNode);
-			const struct aiBone* bone = kuhl_assimp_find_bone(node->mName.data, scene->mMeshes[g->bones->mesh]);
+			const struct aiNode *node = kuhl_assimp_find_node(g->bones->boneList[b]->mName.data, scene->mRootNode);
+			if(node == NULL)
+			{
+				msg(ERROR, "Failed to find node that corresponded to bone: %s\n", g->bones->boneList[b]->mName.data);
+				exit(EXIT_FAILURE);
+			}
+			const struct aiBone *bone = g->bones->boneList[b];
 
-			/* Get bone offset from the aiBone struct */
+
+			/* Start at our current node and traverse up. Apply all of the
+			 * transformation matrices as we traverse up.
+			 *
+			 * TODO: By repeatedly traversing up, we repeatedly
+			 * recalculate the transformation matrices for the nodes
+			 * near the root---potentially reducing performance.
+			 */
+			mat4f_identity(g->bones->matrices[b]);
+			do
+			{
+				float transform[16];
+				kuhl_private_node_matrix(transform, scene, node, animationNum, time);
+				mat4f_mult_mat4f_new(g->bones->matrices[b], transform, g->bones->matrices[b]);
+				node = node->mParent; // move to next node up
+			} while(node != NULL);
+
+			/* Also apply the bone offset */
 			float offset[16];
 			mat4f_from_aiMatrix4x4(offset, bone->mOffsetMatrix);
-
-			/* Traverse the graph up from the bone node and construct
-			 * a single transformation matrix for this bone. */
-			float transform[16];
-			mat4f_identity(transform);
-			while(node != NULL)
-			{
-				float nodeTrans[16];
-				kuhl_private_node_matrix(nodeTrans, scene, node, animationNum, time);
-				mat4f_mult_mat4f_new(transform, nodeTrans, transform);
-				node = node->mParent; // move to next node up
-			}
-
-			/* Update the bone matrix for this bone:
-			   boneMatrix = transform * offset
-			*/
-			mat4f_mult_mat4f_new(g->bones->matrices[b], transform, offset);
+			mat4f_mult_mat4f_new(g->bones->matrices[b], g->bones->matrices[b], offset);
 
 		} // end for each bone
 	} // end for each geometry
@@ -2865,11 +3023,12 @@ void kuhl_update_model(kuhl_geometry *first_geom, unsigned int animationNum, flo
 kuhl_geometry* kuhl_load_model(const char *modelFilename, const char *textureDirname,
                                GLuint program, float bbox[6])
 {
+	char *newModelFilename = kuhl_find_file(modelFilename);
 	// Loads the model from the file and reads in all of the textures:
-	const struct aiScene *scene = kuhl_private_assimp_load(modelFilename, textureDirname);
+	const struct aiScene *scene = kuhl_private_assimp_load(newModelFilename, textureDirname);
 	if(scene == NULL)
 	{
-		printf("%s: ASSIMP was unable to import the model file.\n", modelFilename);
+		msg(ERROR, "ASSIMP was unable to import the model '%s'.\n", modelFilename);
 		return NULL;
 	}
 
@@ -2877,7 +3036,8 @@ kuhl_geometry* kuhl_load_model(const char *modelFilename, const char *textureDir
 	float transform[16];
 	mat4f_identity(transform);
 	kuhl_geometry *ret = kuhl_private_load_model(scene, scene->mRootNode,
-	                                             program, transform);
+	                                             program, transform,
+	                                             newModelFilename, textureDirname);
 
 	/* Ensure model shows up in bind pose if the caller doesn't
 	 * also call kuhl_update_model(). */
@@ -2892,13 +3052,10 @@ kuhl_geometry* kuhl_load_model(const char *modelFilename, const char *textureDir
 	vec3f_add_new(ctr, min, max);
 	vec3f_scalarDiv(ctr, 2);
 
-	/* Print bounding box information to stdout */
-	printf("%s: Bounding box min: ", modelFilename);
-	vec3f_print(min);
-	printf("%s: Bounding box max: ", modelFilename);
-	vec3f_print(max);
-	printf("%s: Bounding box ctr: ", modelFilename);
-	vec3f_print(ctr);
+	/* Print bounding box information to stout */
+	msg(DEBUG, "%s: bbox min: %10.3f %10.3f %10.3f", modelFilename, min[0], min[1], min[2]);
+	msg(DEBUG, "%s: bbox max: %10.3f %10.3f %10.3f", modelFilename, max[0], max[1], max[2]);
+	msg(DEBUG, "%s: bbox ctr: %10.3f %10.3f %10.3f", modelFilename, ctr[0], ctr[1], ctr[2]);
 
 	/* If the user requested bounding box information, give it to
 	 * them. */
@@ -2990,7 +3147,7 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	if(width < 0 || width > maxTextureSize ||
 	   height< 0 || height> maxTextureSize)
 	{
-		kuhl_errmsg("Requested %d x %d texture but maximum allowed is %d\n",
+		msg(ERROR, "Requested %d x %d texture but maximum allowed is %d\n",
 		            width, height, maxTextureSize);
 		exit(EXIT_FAILURE);
 	}
@@ -3011,8 +3168,8 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	{
 		glGenTextures(1, depthTexture);
 		glBindTexture(GL_TEXTURE_2D, *depthTexture);
-		glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT, width, height, 0,
-		             GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH24_STENCIL8, width, height, 0,
+		             GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -3028,11 +3185,11 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	GLuint depthbuffer = 0;
 	glGenRenderbuffers(1, &depthbuffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 
 	// Connect FBO to depth buffer
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER,
-	                          GL_DEPTH_ATTACHMENT,
+	                          GL_DEPTH_STENCIL_ATTACHMENT,
 	                          GL_RENDERBUFFER,
 	                          depthbuffer);
 
@@ -3053,7 +3210,7 @@ GLint kuhl_gen_framebuffer(int width, int height, GLuint *texture, GLuint *depth
 	if(depthTexture != NULL)
 	{
 		glFramebufferTexture2D(GL_FRAMEBUFFER,
-		                       GL_DEPTH_ATTACHMENT,
+		                       GL_DEPTH_STENCIL_ATTACHMENT,
 		                       GL_TEXTURE_2D,
 		                       *depthTexture,      // texture id
 		                       0);            // mipmap level
@@ -3118,7 +3275,7 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
 	if(samples > GL_MAX_SAMPLES || samples < 1)
 	{
-		kuhl_errmsg("Requested %d samples but maximum allowed is %d\n", samples,
+		msg(ERROR, "Requested %d samples but maximum allowed is %d\n", samples,
 		            maxSamples);
 		exit(EXIT_FAILURE);
 	}
@@ -3127,7 +3284,7 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	if(width < 0 || width > maxTextureSize ||
 	   height< 0 || height> maxTextureSize)
 	{
-		kuhl_errmsg("Requested %d x %d texture but maximum allowed is %d\n",
+		msg(ERROR, "Requested %d x %d texture but maximum allowed is %d\n",
 		            width, height, maxTextureSize);
 		exit(EXIT_FAILURE);
 	}
@@ -3151,8 +3308,7 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	{
 		glGenTextures(1, depthTexture);
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, *depthTexture);
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_DEPTH_COMPONENT16,
-		                        width, height, GL_TRUE);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_DEPTH24_STENCIL8, width, height, GL_TRUE);
 		kuhl_errorcheck();
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -3170,11 +3326,11 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	GLuint depthbuffer = 0;
 	glGenRenderbuffers(1, &depthbuffer);
 	glBindRenderbuffer(GL_RENDERBUFFER, depthbuffer);
-	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT, width, height);
+	glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH24_STENCIL8, width, height);
 	
 	// Connect FBO to depth buffer
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER,
-	                          GL_DEPTH_ATTACHMENT,
+	                          GL_DEPTH_STENCIL_ATTACHMENT,
 	                          GL_RENDERBUFFER,
 	                          depthbuffer);
 	kuhl_errorcheck();
@@ -3196,7 +3352,7 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	if(depthTexture != NULL)
 	{
 		glFramebufferTexture2D(GL_FRAMEBUFFER,
-		                       GL_DEPTH_ATTACHMENT,
+		                       GL_DEPTH_STENCIL_ATTACHMENT,
 		                       GL_TEXTURE_2D_MULTISAMPLE,
 		                       *depthTexture,      // texture id
 		                       0);            // mipmap level
@@ -3206,7 +3362,7 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 	GLenum fbStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if(fbStatus != GL_FRAMEBUFFER_COMPLETE)
 	{
-		printf("%s: glCheckFramebufferStatus() indicated a the following problem with the framebuffer:\n", __func__);
+		msg(ERROR, "glCheckFramebufferStatus() indicated a the following problem with the framebuffer:\n");
 		switch(fbStatus)
 		{
 			case GL_FRAMEBUFFER_UNDEFINED:
@@ -3251,141 +3407,6 @@ GLint kuhl_gen_framebuffer_msaa(int width, int height, GLuint *texture, GLuint *
 
 
 
-
-/** The time at which kuhl_limitfps() was last called. */
-static struct timeval limitfps_last = { .tv_sec = 0, .tv_usec = 0 };
-/** When called per frame, sleeps for a short period of time to limit
- * the frames per second. There are two potential uses for this: (1)
- * When FPS are far higher than the monitor refresh rate and CPU load
- * are high, this can reduce both of them to a more reasonable
- * value. (2) Allows you to test to see how your program might run if
- * it were running on hardware with a lower frame rate.
- *
- * kuhl_limitfps() does not reduce tearing. Tearing can eliminated on
- * one monitor connected to a machine via various options in drivers
- * or with special calls to glXSwapIntervalEXT() (not implemented here
- * because I've had difficulty reliably getting it to work/compile),
- * setting options in your video card driver, or setting an
- * environment variable (on Linux machines with NVIDIA cards):
- * http://us.download.nvidia.com/XFree86/Linux-x86/180.22/README/chapter-11.html
- *
- * @param fps Requested frames per second that we should not exceed.
- *
- * @see kuhl_getfps()
- */
-void kuhl_limitfps(int fps)
-{
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-
-	// How many microseconds have elapsed since last called? */
-	suseconds_t elapsed_micro = (tv.tv_sec - limitfps_last.tv_sec)*1000000L + (tv.tv_usec - limitfps_last.tv_usec);
-	// printf("elapsed_micro %ld\n", elapsed_micro);
-	
-	// How many microseconds should elapse per frame?
-	float microspf = 1.0/fps * 1000000;
-	// printf("microsec per frame %f\n", microspf);
-	if(microspf > elapsed_micro)
-	{
-		suseconds_t microsec_sleep = (suseconds_t)microspf - elapsed_micro;
-		// printf("sleeping %ld\n", microsec_sleep);
-		usleep(microsec_sleep);
-	}
-
-	limitfps_last = tv;
-}
-
-
-static int fps_frame=0; /**< Number of frames in this second. Used by kuhl_getfps() */
-static int fps_timebase=-1; /**< Time since we last updated FPS estimate. Used by kuhl_getfps() */
-static float fps_now=-1; /**< Current estimate of FPS? Used by kuhl_getfps() */
-
-/** When called every frame, estimates the frames per second.
- *
- * @param milliseconds The time in milliseconds relative to some fixed
- * value. For example, if you are using GLUT, you can use
- * glutGet(GLUT_ELAPSED_TIME) to get the time in milliseconds since
- * your program started.
- *
- * @return An estimate of the frames per second (updated every second).
- *
- * @see kuhl_limitfps()
- */
-float kuhl_getfps(int milliseconds)
-{
-	fps_frame++;
-
-	/* If it is the first time we're called, keep track of the current
-	 * time so we can calculate FPS once a second has elapsed. */
-	if(fps_timebase == -1)
-		fps_timebase = milliseconds;
-	
-	// If a second has elapsed since our last estimation
-	if(milliseconds - fps_timebase > 1000)
-	{
-		// Calculate frames per second
-		fps_now = fps_frame*1000.0/(milliseconds-fps_timebase);
-		// Update the time that our estimation occured
-		fps_timebase = milliseconds;
-		// Reset our frame counter.
-		fps_frame = 0;
-	}
-	return fps_now;
-}
-
-static int kuhl_random_init_done = 0; /*< Have we called srand48() yet? */
-/** Generates a random integer between min and max inclusive. This
- * uses floating point to avoid possible issues with using rand()
- * along with modulo. This approach isn't completely bias free since
- * doubles don't have infinite precision and we aren't guaranteed
- * perfectly uniform distribution after multiplying the value returned
- * by drand48(). But, this is good enough for most purposes.
- *
- * @param min Smallest random number that we want.
- * @param max Largest random number that we want.
- */
-int kuhl_randomInt(int min, int max)
-{
-	if(kuhl_random_init_done == 0)
-	{
-		// http://stackoverflow.com/questions/8056371
-		srand48((getpid()*2654435761U)^time(NULL));
-		kuhl_random_init_done = 1;
-	}
-	
-	int possibleVals = max-min+1;
-	double fl = drand48(); // [0, 1.0)
-	fl = fl*possibleVals; // [0, possibleVals)
-	fl = fl+min;          // [min, min+possibleVals)
-	                      // [min, min+(max-min+1))
-	                      // [min, max+1)
-	return floor(fl); // casting to int fails to work with negative values
-}
-
-/** Shuffles an array of items randomly.
-
-   @param array Array of items
-   @param n Number of items in the array.
-   @param size Size of each item.
-*/
-void kuhl_shuffle(void *array, int n, int size)
-{
-	char *arr = (char*) array; // Use a char array which we know uses 1 byte pointer arithmetic
-
-	// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-	for(int i=n-1; i>=1; i--)
-	{
-		int j = kuhl_randomInt(0, i); // index to swap
-
-		// Swap the values
-		char tmp[size];
-		memcpy(tmp,        arr+j*size, size);
-		memcpy(arr+j*size, arr+i*size, size);
-		memcpy(arr+i*size, tmp,        size);
-	}
-}
-
-
 /** Plays an audio files asynchronously. This method of playing sounds
     is far from ideal, is not efficient, and will only work on
     Linux. However, it is a quick and easy method that does not make
@@ -3424,11 +3445,12 @@ void kuhl_play_sound(const char *filename)
 		/* Since exec will never return, we can only get here if exec
 		 * failed. */
 		perror("execvp");
-		fprintf(stderr, "%s: Error playing file %s (do you have the aplay, ogg123 and play commands installed on your machine?)\n", __func__, filename);
+		msg(FATAL, "Error playing file %s (do you have the aplay, ogg123 and play commands installed on your machine?)\n", filename);
 		exit(EXIT_FAILURE);
 	}
 
 #else
-	fprintf(stderr, "%s only works on Linux systems\n", __func__);
+	msg(ERROR "This sound function only works on Linux.\n");
 #endif
 }
+

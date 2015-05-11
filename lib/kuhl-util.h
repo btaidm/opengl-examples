@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <GL/gl.h>
+#include "kuhl-nodep.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +54,7 @@ typedef struct
 {
 	int count; /**< Number of bones in this struct */
 	unsigned int mesh; /**< The bones in this struct are associated with this matrix index */
-	char names[MAX_BONES][256]; /**< bone names */
+	const struct aiBone *boneList[MAX_BONES];
 	float matrices[MAX_BONES][16]; /**< Transformation matrices for each bone */
 } kuhl_bonemat;
 #endif
@@ -135,44 +136,26 @@ typedef struct _kuhl_geometry_
  * easier callback approach because it doesn't make it easy to narrow
  * down the line(s) of code causing an error.
  */
-#define kuhl_errorcheck() kuhl_errorcheckFileLine(__FILE__, __LINE__)
+#define kuhl_errorcheck() kuhl_errorcheckFileLine(__FILE__, __LINE__, __func__)
 
-/** An alternative to malloc() which behaves the same way except it
- * prints a message when common errors occur (out of memory, trying to
- * allocate 0 bytes). */
-#define kuhl_malloc(size) kuhl_mallocFileLine(size, __FILE__, __LINE__)
 
-/** Print an error message to stderr with file and line number
- * information. */
-#define kuhl_errmsg(M, ...) fprintf(stderr, "ERROR: %s():%d: " M, __func__, __LINE__, ##__VA_ARGS__)
-/** Print a warning message to stderr with file and line number
- * information. */
-#define kuhl_warnmsg(M, ...) fprintf(stderr, "WARNING: %s():%d: " M, __func__, __LINE__, ##__VA_ARGS__)
-/** Print a message to stdout with file and line number
- * information. */
-#define kuhl_msg(M, ...) fprintf(stdout, "%s():%d: " M, __func__, __LINE__, ##__VA_ARGS__)
 
 	
 // kuhl_errorcheck() calls this C function:
-int kuhl_errorcheckFileLine(const char *file, int line);
+int kuhl_errorcheckFileLine(const char *file, int line, const char *func);
 // kuhl_malloc() calls this C function:
 void* kuhl_mallocFileLine(size_t size, const char *file, int line);
 
 
-int kuhl_can_read_file(const char *filename);
-char* kuhl_find_file(const char *filename);
-char* kuhl_text_read(const char *filename);
 GLuint kuhl_create_shader(const char *filename, GLuint shader_type);
 GLuint kuhl_create_program(const char *vertexFilename, const char *fragFilename);
 void kuhl_delete_program(GLuint program);
 void kuhl_print_program_log(GLuint program);
 void kuhl_print_program_info(GLuint program);
 GLint kuhl_get_uniform(const char *uniformName);
+GLint kuhl_get_attribute(GLuint program, const char *attributeName);
 
 
-void kuhl_limitfps(int fps);
-
-float kuhl_getfps(int milliseconds);
 
 void kuhl_bbox_transform(float bbox[6], float mat[16]);
 
@@ -194,19 +177,15 @@ void kuhl_geometry_texture(kuhl_geometry *geom, GLuint texture, const char* name
 
 
 
+void kuhl_flip_texture_rgba_array(unsigned char *image, const int width, const int height, const int components);
+GLuint kuhl_read_texture_rgba_array_wrap(const unsigned char *array, int width, int height, GLuint wrapS, GLuint wrapT);
+GLuint kuhl_read_texture_rgba_array(const unsigned char *array, int width, int height);
 
-GLuint kuhl_read_texture_rgba_array(const char *array, int width, int height);
-
-int kuhl_randomInt(int min, int max);
-void kuhl_shuffle(void *array, int n, int size);
-
-
-#ifdef KUHL_UTIL_USE_IMAGEMAGICK
 float kuhl_make_label(const char *label, GLuint *texName, float color[3], float bgcolor[4], float pointsize);
+float kuhl_read_texture_file_wrap(const char *filename, GLuint *texName, GLuint wrapS, GLuint wrapT);
 float kuhl_read_texture_file(const char *filename, GLuint *texName);
 void kuhl_screenshot(const char *outputImageFilename);
 void kuhl_video_record(const char *fileLabel, int fps);
-#endif // end use imagemagick
 
 #ifdef KUHL_UTIL_USE_ASSIMP
 void kuhl_update_model(kuhl_geometry *first_geom, unsigned int animationNum, float time);

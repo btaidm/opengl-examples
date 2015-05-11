@@ -30,6 +30,10 @@ extern "C" {
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h> /* needed for memcpy() */
+
+#include "list.h"
+#include "msg.h"
 	
 /** Set the values in a 3-component float vector */
 static inline void   vec3f_set(float  v[3], float  a, float  b, float  c)
@@ -51,8 +55,7 @@ static inline void   vec4d_set(double v[4], double a, double b, double c, double
  */
 static inline void vecNf_copy(float result[ ], const float a[ ], const int n)
 {
-	for(int i=0; i<n; i++)
-		result[i] = a[i];
+	memcpy(result, a, n*sizeof(float));
 }
 /** Copy the contents of one double vector in to another vector.
  * @param result An array to copy values into.
@@ -61,8 +64,7 @@ static inline void vecNf_copy(float result[ ], const float a[ ], const int n)
  */
 static inline void vecNd_copy(double result[ ], const double a[ ], const int n)
 {
-	for(int i=0; i<n; i++)
-		result[i] = a[i];
+	memcpy(result, a, n*sizeof(double));
 }
 /** Copy the contents 3-component float vector into another vector.
  * @param result An array to copy values into.
@@ -230,6 +232,120 @@ static inline float vec4f_dot(const float A[4], const float B[4])
 static inline double vec4d_dot(const double A[4], const double B[4])
 { return A[0]*B[0] + A[1]*B[1] + A[2]*B[2] + A[3]*B[3]; }
 
+
+/** Get the index of the value at a specific row and column in an NxN matrix.
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @param n The size of the matrix (use 3 for a 3x3 matrix)
+    @return The index that the value is at in the matrix array. */
+static inline int matN_getIndex(const int row, const int col, const int n)
+{ return row+col*n; }
+/** Get the index of the value at a specific row and column in an 3x3 matrix.
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat3_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 3); }
+/** Get the index of the value at a specific row and column in an 4x4 matrix.
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat4_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 4); }
+/** Get the index of the value at a specific row and column in an 3x3 float matrix. Equivalent to mat3_getIndex().
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat3f_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 3); }
+/** Get the index of the value at a specific row and column in an 4x4 float matrix. Equivalent to mat4_getIndex().
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat4f_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 4); }
+/** Get the index of the value at a specific row and column in an 3x3 double matrix. Equivalent to mat3_getIndex().
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat3d_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 3); }
+/** Get the index of the value at a specific row and column in an 4x4 double matrix. Equivalent to mat4_getIndex().
+    @param row The row that the value is at in the matrix (0=first row).
+    @param col The column that the value is at in the matrix (0=first column).
+    @return The index that the value is at in the matrix array. */
+static inline int mat4d_getIndex(const int row, const int col)
+{ return matN_getIndex(row, col, 4); }
+
+	
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vecNf_mult_vecNf(float  m[ ],  const float  A[ ], const float  B[ ], const int n)
+{
+	for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+	        m[matN_getIndex(i,j,n)] = A[i] * B[j];
+        }
+    }
+}
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vecNd_mult_vecNd(double m[ ],  const double A[ ], const double B[ ], const int n)
+{
+	for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+	        m[matN_getIndex(i,j,n)] = A[i] * B[j];
+        }
+    }
+}
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vec3f_mult_vec3f(float  m[9],  const float  A[3], const float  B[3])
+{ vecNf_mult_vecNf(m, A, B, 3); }
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vec3d_mult_vec3d(double m[9],  const double A[3], const double B[3])
+{ vecNd_mult_vecNd(m, A, B, 3); }
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vec4f_mult_vec4f(float  m[16], const float  A[4], const float  B[4])
+{ vecNf_mult_vecNf(m, A, B, 4); }
+/** Multiplies a column vector by a row vector to produce a matrix.
+ *
+ * @param m The resulting matrix.
+ * @param A Column vector.
+ * @param B Row vector.
+ * @param n Number of components in the vector.
+ */
+static inline void vec4d_mult_vec4d(double m[16], const double A[4], const double B[4])
+{ vecNd_mult_vecNd(m, A, B, 4); }
+
+	
 /** Calculate the norm squared or length squared of a 3-component float vector.
  * @param A The vector to calculate the length of.
  * @return The length*length of the vector.
@@ -683,49 +799,6 @@ static inline void vec4f_sub_new(float result[4], const float a[4], const float 
 static inline void vec4d_sub_new(double result[4], const double a[4], const double b[4])
 { vecNd_sub_new(result, a, b, 4); }
 
-/** Get the index of the value at a specific row and column in an NxN matrix.
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @param n The size of the matrix (use 3 for a 3x3 matrix)
-    @return The index that the value is at in the matrix array. */
-static inline int matN_getIndex(const int row, const int col, const int n)
-{ return row+col*n; }
-/** Get the index of the value at a specific row and column in an 3x3 matrix.
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat3_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 3); }
-/** Get the index of the value at a specific row and column in an 4x4 matrix.
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat4_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 4); }
-/** Get the index of the value at a specific row and column in an 3x3 float matrix. Equivalent to mat3_getIndex().
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat3f_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 3); }
-/** Get the index of the value at a specific row and column in an 4x4 float matrix. Equivalent to mat4_getIndex().
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat4f_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 4); }
-/** Get the index of the value at a specific row and column in an 3x3 double matrix. Equivalent to mat3_getIndex().
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat3d_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 3); }
-/** Get the index of the value at a specific row and column in an 4x4 double matrix. Equivalent to mat4_getIndex().
-    @param row The row that the value is at in the matrix (0=first row).
-    @param col The column that the value is at in the matrix (0=first column).
-    @return The index that the value is at in the matrix array. */
-static inline int mat4d_getIndex(const int row, const int col)
-{ return matN_getIndex(row, col, 4); }
 
 /** Copy the values in a matrix column into a vector.
     @param result The vector containing the column from the matrix.
@@ -734,7 +807,12 @@ static inline int mat4d_getIndex(const int row, const int col)
     @param n The size of the matrix (3 means 3x3 matrix and a 3-component output vector).
 */
 static inline void matNf_getColumn(float  result[ ], const float  m[  ], const int col, const int n)
-{ for(int i=0; i<n; i++) result[i] = m[matN_getIndex(i, col, n)]; }
+{
+	if(col >= n)
+		printf("%s: Column %d must be less than %d\n", __func__, col, n);
+	for(int i=0; i<n; i++)
+		result[i] = m[i+col*n];
+}
 /** Copy the values in a matrix column into a vector.
     @param result The vector containing the column from the matrix.
     @param m The matrix to copy a column from.
@@ -742,7 +820,12 @@ static inline void matNf_getColumn(float  result[ ], const float  m[  ], const i
     @param n The size of the matrix (3 means 3x3 matrix and a 3-component output vector).
 */
 static inline void matNd_getColumn(double result[ ], const double m[  ], const int col, const int n)
-{ for(int i=0; i<n; i++) result[i] = m[matN_getIndex(i, col, n)]; }
+{
+	if(col >= n)
+		printf("%s: Column %d must be less than %d\n", __func__, col, n);
+	for(int i=0; i<n; i++)
+		result[i] = m[i+col*n];
+}
 /** Copy the values in a 4x4 matrix column into a vector.
     @param result The vector containing the column from the matrix.
     @param m The matrix to copy a column from.
@@ -780,7 +863,12 @@ static inline void mat3d_getColumn(double result[3], const double m[ 9], const i
     @param n The size of the matrix (3 means 3x3 matrix and a 3-component output vector).
 */
 static inline void matNf_getRow(float  result[ ], const float  m[  ], const int row, const int n)
-{ for(int i=0; i<n; i++) result[i] = m[matN_getIndex(row, i, n)]; }
+{
+	if(row >= n)
+		printf("%s: Row %d must be less than %d\n", __func__, row, n);
+	for(int i=0; i<n; i++)
+		result[i] = m[row+i*n];
+}
 /** Copy the values in a matrix row into a vector.
     @param result The vector containing the row from the matrix.
     @param m The matrix to copy a row from.
@@ -788,7 +876,12 @@ static inline void matNf_getRow(float  result[ ], const float  m[  ], const int 
     @param n The size of the matrix (3 means 3x3 matrix and a 3-component output vector).
 */
 static inline void matNd_getRow(double result[ ], const double m[  ], const int row, const int n)
-{ for(int i=0; i<n; i++) result[i] = m[matN_getIndex(row, i, n)]; }
+{
+	if(row >= n)
+		printf("%s: Row %d must be less than %d\n", __func__, row, n);
+	for(int i=0; i<n; i++)
+		result[i] = m[row+i*n];
+}
 /** Copy the values in a 4x4 matrix row into a vector.
     @param result The vector containing the row from the matrix.
     @param m The matrix to copy a row from.
@@ -826,7 +919,12 @@ static inline void mat3d_getRow(double result[3], const double m[ 9], const int 
  @param n The size of the matrix (and the length of the vector v)
 */
 static inline void matNf_setColumn(float  matrix[  ], const float  v[ ], const int col, const int n)
-{ for(int row=0; row<n; row++) matrix[matN_getIndex(row, col, n)] = v[row]; }
+{
+	if(col >= n)
+		printf("%s: Column %d must be less than %d\n", __func__, col, n);
+	for(int row=0; row<n; row++)
+		matrix[matN_getIndex(row, col, n)] = v[row];
+}
 /** Set a column of an NxN double matrix to a specific set of values.
  @param matrix The matrix to be changed.
  @param v The values to be placed into a specific column of the matrix.
@@ -834,7 +932,12 @@ static inline void matNf_setColumn(float  matrix[  ], const float  v[ ], const i
  @param n The size of the matrix (and the length of the vector v)
 */
 static inline void matNd_setColumn(double matrix[  ], const double v[ ], const int col, const int n)
-{ for(int row=0; row<n; row++) matrix[matN_getIndex(row, col, n)] = v[row]; }
+{
+	if(col >= n)
+		printf("%s: Column %d must be less than %d\n", __func__, col, n);
+	for(int row=0; row<n; row++)
+		matrix[matN_getIndex(row, col, n)] = v[row];
+}
 
 /** Set a column of an 3x3 float matrix to a specific set of values.
  @param matrix The matrix to be changed.
@@ -871,7 +974,12 @@ static inline void mat4d_setColumn(double matrix[16], const double v[4], const i
  @param n The size of the matrix (and the length of the vector v)
 */
 static inline void matNf_setRow(float  matrix[  ], const float  v[ ], const int row, const int n)
-{ for(int col=0; col<n; col++) matrix[matN_getIndex(row, col, n)] = v[col]; }
+{
+	if(row >= n)
+		printf("%s: Row %d must be less than %d\n", __func__, row, n);
+	for(int col=0; col<n; col++)
+		matrix[matN_getIndex(row, col, n)] = v[col];
+}
 /** Set a row of an NxN double matrix to a specific set of values.
  @param matrix The matrix to be changed.
  @param v The values to be placed into a specific row of the matrix.
@@ -879,7 +987,12 @@ static inline void matNf_setRow(float  matrix[  ], const float  v[ ], const int 
  @param n The size of the matrix (and the length of the vector v)
 */
 static inline void matNd_setRow(double matrix[  ], const double v[ ], const int row, const int n)
-{ for(int col=0; col<n; col++) matrix[matN_getIndex(row, col, n)] = v[col]; }
+{
+	if(row >= n)
+		printf("%s: Row %d must be less than %d\n", __func__, row, n);
+	for(int col=0; col<n; col++)
+		matrix[matN_getIndex(row, col, n)] = v[col];
+}
 /** Set a row of an 3x3 float matrix to a specific set of values.
  @param matrix The matrix to be changed.
  @param v The values to be placed into a specific row of the matrix.
@@ -1008,8 +1121,7 @@ static inline void matNf_mult_vecNf_new(float result[], const float m[], const f
 		for(int j=0; j<n; j++)
 			tmp[i] += m[matN_getIndex(i,j,n)] * v[j];
 	}
-	for(int i=0; i<n; i++)
-		result[i] = tmp[i];
+	vecNf_copy(result, tmp, n);
 }
 static inline void matNd_mult_vecNd_new(double result[], const double m[], const double v[], const int n)
 {
@@ -1020,8 +1132,7 @@ static inline void matNd_mult_vecNd_new(double result[], const double m[], const
 		for(int j=0; j<n; j++)
 			tmp[i] += m[matN_getIndex(i,j,n)] * v[j];
 	}
-	for(int i=0; i<n; i++)
-		result[i] = tmp[i];
+	vecNd_copy(result, tmp, n);
 }
 static inline void mat3f_mult_vec3f_new(float result[3], const float m[9], const float v[3])
 { matNf_mult_vecNf_new(result, m, v, 3); }
@@ -1054,12 +1165,12 @@ static inline void mat4d_mult_vec4d(double vector[4], const double matrix[16])
 static inline void matNf_transpose(float m[], const int n)
 {
 	float tmp;
-	for(int i=0; i<n; i++)
+	for(int row=0; row<n; row++)
 	{
-		for(int j=0; j<i; j++)
+		for(int col=0; col<row; col++)
 		{
-			int index1 = matN_getIndex(i,j,n);
-			int index2 = matN_getIndex(j,i,n);
+			int index1 = row+col*n;
+			int index2 = col+row*n;
 			tmp = m[index1];
 			m[index1] = m[index2];
 			m[index2] = tmp;
@@ -1072,12 +1183,12 @@ static inline void matNf_transpose(float m[], const int n)
 static inline void matNd_transpose(double m[], const int n)
 {
 	double tmp;
-	for(int i=0; i<n; i++)
+	for(int row=0; row<n; row++)
 	{
-		for(int j=0; j<i; j++)
+		for(int col=0; col<row; col++)
 		{
-			int index1 = matN_getIndex(i,j,n);
-			int index2 = matN_getIndex(j,i,n);
+			int index1 = row+col*n;
+			int index2 = col+row*n;
 			tmp = m[index1];
 			m[index1] = m[index2];
 			m[index2] = tmp;
@@ -1143,12 +1254,12 @@ static inline void mat4d_transpose_new(double dest[16], const double src[16])
 */
 static inline void matNf_identity(float m[], int n)
 {
-	for(int i=0; i<n; i++)
-		for(int j=0; j<n; j++)
-			if(i==j)
-				m[matN_getIndex(i,j,n)] = 1.0f;
+	for(int row=0; row<n; row++)
+		for(int col=0; col<n; col++)
+			if(row==col)
+				m[row+col*n] = 1.0f;
 			else
-				m[matN_getIndex(i,j,n)] = 0.0f;
+				m[row+col*n] = 0.0f;
 }
 /** Create a NxN double identity matrix.
  @param m Location to store the resulting identity matrix.
@@ -1156,12 +1267,12 @@ static inline void matNf_identity(float m[], int n)
 */
 static inline void matNd_identity(double m[], int n)
 {
-	for(int i=0; i<n; i++)
-		for(int j=0; j<n; j++)
-			if(i==j)
-				m[matN_getIndex(i,j,n)] = 1.0;
+	for(int row=0; row<n; row++)
+		for(int col=0; col<n; col++)
+			if(row==col)
+				m[row+col*n] = 1.0;
 			else
-				m[matN_getIndex(i,j,n)] = 0.0;
+				m[row+col*n] = 0.0;
 }
 /** Create a 3x3 float identity matrix.
  @param m Location to store the resulting identity matrix.
@@ -1259,7 +1370,134 @@ static inline void mat3f_from_mat3d(float  dest[ 9], const double src[ 9])
 static inline void mat4f_from_mat4d(float  dest[16], const double src[16])
 { for(int i=0; i<16; i++) dest[i] = (float) src[i]; }
 
+/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
+    the identity and then the 3x3 matrix is copied into the upper left
+    corner of the matrix.
+    @param dest The new 4x4 matrix.
+    @param src The original 3x3 matrix.
+*/
+static inline void mat4f_from_mat3f(float  dest[16], const float  src[ 9])
+{
+	mat4f_identity(dest);
+	for(int i=0; i<3; i++)
+		for(int j=0; j<3; j++)
+			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
+}
+/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
+    the identity and then the 3x3 matrix is copied into the upper left
+    corner of the matrix.
+    @param dest The new 4x4 matrix.
+    @param src The original 3x3 matrix.
+*/
+static inline void mat4d_from_mat3d(double dest[16], const double src[ 9])
+{
+	mat4d_identity(dest);
+	for(int i=0; i<3; i++)
+		for(int j=0; j<3; j++)
+			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
+}
 
+/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
+    @param dest The new 3x3 matrix.
+    @param src The original 4x4 matrix.
+*/
+static inline void mat3f_from_mat4f(float  dest[ 9], const float  src[16])
+{
+	for(int i=0; i<3; i++)
+		for(int j=0; j<3; j++)
+			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
+}
+/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
+    @param dest The new 3x3 matrix.
+    @param src The original 4x4 matrix.
+*/
+static inline void mat3d_from_mat4d(double dest[ 9], const double src[16])
+{
+	for(int i=0; i<3; i++)
+		for(int j=0; j<3; j++)
+			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
+}
+
+
+/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param x The amount that the matrix should scale the x-components by.
+    @param y The amount that the matrix should scale the y-components by.
+    @param z The amount that the matrix should scale the z-components by.
+*/
+static inline void mat4f_scale_new(float  result[16], float x, float y, float z)
+{
+	mat4f_identity(result);
+	result[mat4_getIndex(0,0)] = x;
+	result[mat4_getIndex(1,1)] = y;
+	result[mat4_getIndex(2,2)] = z;
+}
+/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param x The amount that the matrix should scale the x-components by.
+    @param y The amount that the matrix should scale the y-components by.
+    @param z The amount that the matrix should scale the z-components by.
+*/
+static inline void mat4d_scale_new(double result[16], double x, double y, double z)
+{
+	mat4d_identity(result);
+	result[mat4_getIndex(0,0)] = x;
+	result[mat4_getIndex(1,1)] = y;
+	result[mat4_getIndex(2,2)] = z;
+}
+/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param xyz A vector containing the amount to scale each component by.
+*/
+static inline void mat4f_scaleVec_new(float  result[16], const float  xyz[3])
+{ mat4f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
+/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param xyz A vector containing the amount to scale each component by.
+*/
+static inline void mat4d_scaleVec_new(double result[16], const double xyz[3])
+{ mat4d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
+/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param x The amount that the matrix should scale the x-components by.
+    @param y The amount that the matrix should scale the y-components by.
+    @param z The amount that the matrix should scale the z-components by.
+*/
+static inline void mat3f_scale_new(float  result[9], float x, float y, float z)
+{
+	mat3f_identity(result);
+	result[mat3_getIndex(0,0)] = x;
+	result[mat3_getIndex(1,1)] = y;
+	result[mat3_getIndex(2,2)] = z;
+}
+/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param x The amount that the matrix should scale the x-components by.
+    @param y The amount that the matrix should scale the y-components by.
+    @param z The amount that the matrix should scale the z-components by.
+*/
+static inline void mat3d_scale_new(double result[9], double x, double y, double z)
+{
+	mat3d_identity(result);
+	result[mat3_getIndex(0,0)] = x;
+	result[mat3_getIndex(1,1)] = y;
+	result[mat3_getIndex(2,2)] = z;
+}
+/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param xyz A vector containing the amount to scale each component by.
+*/
+static inline void mat3f_scaleVec_new(float  result[9], const float  xyz[3])
+{ mat3f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
+/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
+    @param result The location to store the new scale matrix.
+    @param xyz A vector containing the amount to scale each component by.
+*/
+static inline void mat3d_scaleVec_new(double result[9], const double xyz[3])
+{ mat3d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
+
+
+	
 /* mat[43][df]_invert_new() will invert a matrix and store the
  * inverted matrix at a new location. However, these functions work
  * correctly even if you try to invert a matrix in place. For example,
@@ -1343,15 +1581,6 @@ void mat4d_translate_new(double result[16], double x, double y, double z);
 void mat4f_translateVec_new(float  result[16], const float  xyz[3]);
 void mat4d_translateVec_new(double result[16], const double xyz[3]);
 
-/* Set the matrix to the identity and then set the first three numbers along the diagonal starting from the upper-left corner of the matrix */
-void mat4f_scale_new(float  result[16], float  x, float  y, float  z);
-void mat4d_scale_new(double result[16], double x, double y, double z);
-void mat4f_scaleVec_new(float  result[16], const float  xyz[3]);
-void mat4d_scaleVec_new(double result[16], const double xyz[3]);
-void mat3f_scale_new(float  result[9], float x, float y, float z);
-void mat3d_scale_new(double result[9], double x, double y, double z);
-void mat3f_scaleVec_new(float  result[9], const float  xyz[3]);
-void mat3d_scaleVec_new(double result[9], const double xyz[3]);
 
 /* Sets dest to the identity and then copies src into the upper-left
  * corner of dest. */
@@ -1376,6 +1605,14 @@ void mat4d_lookat_new(double result[16], double eyeX, double eyeY, double eyeZ, 
 void mat4f_lookatVec_new(float  result[16], const float  eye[3], const float  center[3], const float  up[3]);
 void mat4d_lookatVec_new(double result[16], const double eye[3], const double center[3], const double up[3]);
 
+/* Matrix stack implementation */
+void mat4f_stack_push(list *l);
+void mat4f_stack_mult(list *l, float m[16]);
+void mat4f_stack_pop(list *l);
+void mat4f_stack_peek(const list *l, float m[16]);
+
+
+	
 #ifdef __cplusplus
 } // end extern "C"
 #endif

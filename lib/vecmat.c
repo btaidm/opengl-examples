@@ -25,13 +25,25 @@ extern inline void vec4d_copy(double result[4], const double a[4]);
 extern inline void vec3f_cross_new(float  result[3], const float  A[3], const float  B[3]);
 extern inline void vec3d_cross_new(double result[3], const double A[3], const double B[3]);
 
-/* Vector dot products */
+/* Vector dot products.
+   Equivalent to multiplying a RowVec * ColVec = scalar */
 extern inline float  vecNf_dot(const float  A[ ], const float  B[ ], const int n);
 extern inline double vecNd_dot(const double A[ ], const double B[ ], const int n);
 extern inline float  vec3f_dot(const float  A[3], const float  B[3]);
 extern inline double vec3d_dot(const double A[3], const double B[3]);
 extern inline float  vec4f_dot(const float  A[4], const float  B[4]);
 extern inline double vec4d_dot(const double A[4], const double B[4]);
+
+/* Vector multiplication.
+   Multiply a ColVec * RowVec = Matrix */
+extern inline void vecNf_mult_vecNf(float  m[ ],  const float  A[ ], const float  B[ ], const int n);
+extern inline void vecNd_mult_vecNd(double m[ ],  const double A[ ], const double B[ ], const int n);
+extern inline void vec3f_mult_vec3f(float  m[9],  const float  A[3], const float  B[3]);
+extern inline void vec3d_mult_vec3d(double m[9],  const double A[3], const double B[3]);
+extern inline void vec4f_mult_vec4f(float  m[16], const float  A[4], const float  B[4]);
+extern inline void vec4d_mult_vec4d(double m[16], const double A[4], const double B[4]);
+
+
 
 /* Calculate the norm squared (i.e., length squared) of a vector. This
  * is different than normalizing a vector. */
@@ -247,11 +259,27 @@ extern inline void mat3d_print(const double m[ 9]);
 extern inline void mat4f_print(const float  m[16]);
 extern inline void mat4d_print(const double m[16]);
 
+
+/* Set the matrix to the identity and then set the first three numbers along the diagonal starting from the upper-left corner of the matrix */
+extern inline void mat4f_scale_new(float  result[16], float  x, float  y, float  z);
+extern inline void mat4d_scale_new(double result[16], double x, double y, double z);
+extern inline void mat4f_scaleVec_new(float  result[16], const float  xyz[3]);
+extern inline void mat4d_scaleVec_new(double result[16], const double xyz[3]);
+extern inline void mat3f_scale_new(float  result[9], float x, float y, float z);
+extern inline void mat3d_scale_new(double result[9], double x, double y, double z);
+extern inline void mat3f_scaleVec_new(float  result[9], const float  xyz[3]);
+extern inline void mat3d_scaleVec_new(double result[9], const double xyz[3]);
+
+
 /* Convert between 3x3 and 4x4 matrices */
 extern inline void mat3d_from_mat3f(double dest[ 9], const float  src[ 9]);
 extern inline void mat4d_from_mat4f(double dest[16], const float  src[16]);
 extern inline void mat3f_from_mat3d(float  dest[ 9], const double src[ 9]);
 extern inline void mat4f_from_mat4d(float  dest[16], const double src[16]);
+extern inline void mat4f_from_mat3f(float  dest[16], const float  src[ 9]);
+extern inline void mat4d_from_mat3d(double dest[16], const double src[ 9]);
+extern inline void mat3f_from_mat4f(float  dest[ 9], const float  src[16]);
+extern inline void mat3d_from_mat4d(double dest[ 9], const double src[16]);
 
 /** Inverts a 4x4 float matrix.
  *
@@ -1368,7 +1396,7 @@ void quatf_slerp_new(float result[4], const float start[4], const float end[4], 
 		vec4f_scalarMult_new(scaledEnd,   result,       endScale);
 		vec4f_add_new(result, scaledStart, scaledEnd);
 	}
-	vec4f_normalize(result);
+	//vec4f_normalize(result);
 }
 
 /** Spherical linear interpolation of unit quaternion.
@@ -1472,132 +1500,6 @@ void mat4f_translateVec_new(float  result[16], const float  xyz[3])
 */
 void mat4d_translateVec_new(double result[16], const double xyz[3])
 { mat4d_translate_new(result, xyz[0], xyz[1], xyz[2]); }
-
-/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat4f_scale_new(float  result[16], float x, float y, float z)
-{
-	mat4f_identity(result);
-	result[mat4_getIndex(0,0)] = x;
-	result[mat4_getIndex(1,1)] = y;
-	result[mat4_getIndex(2,2)] = z;
-}
-/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat4d_scale_new(double result[16], double x, double y, double z)
-{
-	mat4d_identity(result);
-	result[mat4_getIndex(0,0)] = x;
-	result[mat4_getIndex(1,1)] = y;
-	result[mat4_getIndex(2,2)] = z;
-}
-/** Creates a new 4x4 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat4f_scaleVec_new(float  result[16], const float  xyz[3])
-{ mat4f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 4x4 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat4d_scaleVec_new(double result[16], const double xyz[3])
-{ mat4d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat3f_scale_new(float  result[9], float x, float y, float z)
-{
-	mat3f_identity(result);
-	result[mat3_getIndex(0,0)] = x;
-	result[mat3_getIndex(1,1)] = y;
-	result[mat3_getIndex(2,2)] = z;
-}
-/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param x The amount that the matrix should scale the x-components by.
-    @param y The amount that the matrix should scale the y-components by.
-    @param z The amount that the matrix should scale the z-components by.
-*/
-void mat3d_scale_new(double result[9], double x, double y, double z)
-{
-	mat3d_identity(result);
-	result[mat3_getIndex(0,0)] = x;
-	result[mat3_getIndex(1,1)] = y;
-	result[mat3_getIndex(2,2)] = z;
-}
-/** Creates a new 3x3 float scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat3f_scaleVec_new(float  result[9], const float  xyz[3])
-{ mat3f_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-/** Creates a new 3x3 double scale matrix with the rest of the matrix set to the identity.
-    @param result The location to store the new scale matrix.
-    @param xyz A vector containing the amount to scale each component by.
-*/
-void mat3d_scaleVec_new(double result[9], const double xyz[3])
-{ mat3d_scale_new(result, xyz[0], xyz[1], xyz[2]); }
-
-
-/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
-    the identity and then the 3x3 matrix is copied into the upper left
-    corner of the matrix.
-    @param dest The new 4x4 matrix.
-    @param src The original 3x3 matrix.
-*/
-void mat4f_from_mat3f(float  dest[16], const float  src[ 9])
-{
-	mat4f_identity(dest);
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
-}
-/** Creates a 4x4 matrix from a 3x3 matrix. The new matrix is set to
-    the identity and then the 3x3 matrix is copied into the upper left
-    corner of the matrix.
-    @param dest The new 4x4 matrix.
-    @param src The original 3x3 matrix.
-*/
-void mat4d_from_mat3d(double dest[16], const double src[ 9])
-{
-	mat4d_identity(dest);
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat4_getIndex(i,j)] = src[mat3_getIndex(i,j)];
-}
-
-/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
-    @param dest The new 3x3 matrix.
-    @param src The original 4x4 matrix.
-*/
-void mat3f_from_mat4f(float  dest[ 9], const float  src[16])
-{
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
-}
-/** Creates a 3x3 matrix from a 4x4 matrix by copying only the upper-left 3x3 components from the 4x4 matrix.
-    @param dest The new 3x3 matrix.
-    @param src The original 4x4 matrix.
-*/
-void mat3d_from_mat4d(double dest[ 9], const double src[16])
-{
-	for(int i=0; i<3; i++)
-		for(int j=0; j<3; j++)
-			dest[mat3_getIndex(i,j)] = src[mat4_getIndex(i,j)];
-}
 
 /** Creates a view frustum projection matrix (float). This
  * creates a matrix similar to the one that glFrustum() would
@@ -1746,8 +1648,8 @@ void mat4d_ortho_new(double result[16], double left, double right, double bottom
  */
 void mat4f_perspective_new(float result[16], float  fovy, float  aspect, float  near, float  far)
 {
-	near = fabs(near);
-	far = fabs(far);
+	near = fabsf(near);
+	far = fabsf(far);
 	if(near == 0)
 	{
 		fprintf(stderr, "%s: Invalid perspective projection matrix.\n", __func__);
@@ -1772,8 +1674,8 @@ void mat4f_perspective_new(float result[16], float  fovy, float  aspect, float  
  */
 void mat4d_perspective_new(double result[16], double fovy, double aspect, double near, double far)
 {
-	near = abs(near);
-	far = abs(far);
+	near = fabs(near);
+	far = fabs(far);
 	if(near == 0)
 	{
 		fprintf(stderr, "%s: Invalid perspective projection matrix.\n", __func__);
@@ -1895,3 +1797,88 @@ void mat4d_lookat_new(double result[16], double eyeX, double eyeY, double eyeZ, 
 }
 
 
+/** Pushes a copy of a matrix currently on top of the stack onto the
+    top of the stack. A list structure is used to represent the stack.
+
+    @param l A list structure to store the stack.
+
+    @param m The matrix to multiply against the top matrix on the
+    stack and then push the result onto the stack.
+
+    @return If l is NULL, a newly allocated stack that should
+    eventually be free()'d with list_free(). Otherwise, the same value
+    as l.
+ */
+void mat4f_stack_push(list *l)
+{
+	float peek[16];
+
+	if(l->length == 0)
+	{
+		/* Push an identity matrix if the stack is empty */
+		mat4f_identity(peek);
+		list_push(l, peek);
+	}
+	else
+	{
+		/* Get the top matrix on the stack or use the identity if the
+		 * stack is empty */
+		list_peek(l, peek);
+
+		if(list_push(l, peek) == 0)
+		{
+			msg(FATAL, "Failed to push a matrix onto the stack");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+/** Pop a matrix from the top of the stack. Similar to OpenGL 2.0
+    glPopMatrix().
+
+    @param l The stack to pop from.
+ */
+void mat4f_stack_pop(list *l)
+{
+	if(l == NULL || l->length == 0)
+		return;
+	list_pop(l, NULL);
+}
+
+/** Retrieve a copy of the top matrix from the stack without changing
+    the contents of the stack.
+
+    @param l The stack to retrieve the top matrix from.
+    
+    @param m The location to copy the top matrix into.
+ */
+void mat4f_stack_peek(const list *l, float m[16])
+{
+	if(list_peek(l, m) == 0)
+		mat4f_identity(m);
+}
+
+
+/** Multiplies the top matrix on the stack with the given matrix. A
+    list structure is used to represent the stack. If the stack is
+    empty, the matrix will instead be pushed onto the stack.
+
+    @param l The stack that the matrix should be applied to.
+
+    @param m The matrix to be multiplied against the top matrix on the
+    stack.
+    
+    @return If l is NULL, a newly allocated stack that should
+    eventually be free()'d with list_free(). Otherwise, the same value
+    as l.
+ */
+void mat4f_stack_mult(list *l, float m[16])
+{
+	if(l->length == 0)
+		list_push(l, m);
+	else
+	{
+		float *top = (float*) list_getptr(l, l->length-1);
+		mat4f_mult_mat4f_new(top, top, m);
+	}
+}

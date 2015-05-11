@@ -19,7 +19,7 @@ Try to compile the programs
 
     make
 
-Try running a program
+Try running a program (all programs will be placed in the "bin" directory)
 
     ./ogl3-triangle
 
@@ -27,29 +27,46 @@ Check out model loading and texturing capabilities
 
     ./ogl3-assimp models/duck.dae
 
-Run code for an HMD:
+Run code for an HMD (left/right eye screens side-by-side):
 
     ./hmd.sh ./ogl3-triangle
-
-Run code on the IVS display wall (if you have permission to do so)
-
-    ./ivs.sh ./ogl3-triangle
-
-Test to see if program will work on IVS without access to the IVS display wall.
-
-    ./local.sh ./ogl3-triangle
-
-Run code on the IVS display wall and update the viewport based on tracking the user's head (if you have permission to do so)
-
-    ./ivs-track.sh ./ogl3-triangle
-
-Run code on the IVS display wall and account for the screen bezels (if you have permission to do so)
-
-    ./ivs3.sh ./ogl3-triangle
 
 Run the code using the Oculus HMD
 
     ./oculus.sh ./ogl3-triangle
+
+Run the code with red/cyan anaglyph 3D:
+
+    ./anaglyph.sh ./ogl3-triangle
+
+If you want to want to use VRPN to control the position and
+orientation of the camera, you need to:
+    
+    - Edit ~/.vrpn-server so that it contains the IP address or
+      hostname of the VRPN server.
+
+    - Set the VIEWMAT_VRPN_OBJECT environment variable to the name of
+      the tracked object.
+
+    - Run the program (such as ogl3-assimp) that you want to run.
+
+
+Michigan Tech: Run code on the IVS display wall (if you have permission to do so)
+
+    ./ivs.sh ./ogl3-triangle
+
+Michigan Tech: Test to see if program will work on IVS without access to the IVS display wall.
+
+    ./local.sh ./ogl3-triangle
+
+Michigan Tech: Run code on the IVS display wall and update the viewport based on tracking the user's head (if you have permission to do so)
+
+    ./ivs-track.sh ./ogl3-triangle
+
+Michigan Tech: Run code on the IVS display wall and account for the screen bezels (if you have permission to do so)
+
+    ./ivs3.sh ./ogl3-triangle
+
 
 
 ===
@@ -88,11 +105,10 @@ may not work with this code.
  - Homepage: http://freeglut.sourceforge.net/
  - Freeglut license: https://github.com/dcnieho/FreeGLUT/blob/git_master/freeglut/freeglut/COPYING
 
-ImageMagick's MagickCore library (optional, necessary to load textures
-from image file) - OpenGL doesn't provide a way for you to load common
-image files. If you want textures, your program must read, parse and
-interpret different image file types. ImageMagick supports nearly
-every kind of image file format you can find.
+ImageMagick's MagickCore library (optional) - By default, this
+codebase uses STB (code included in this repository) to load some
+types of JPG, PNG and other file formats. However, ImageMagick
+supports nearly every possible file format.
 
  - For a guide to install ImageMagick, see IMAGEMAGICK-INSTALL.txt
  - Version 6.7.5-5 (circa 2012) or higher is recommended; the brightness of images in older versions may be incorrect.

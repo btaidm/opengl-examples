@@ -1,0 +1,23 @@
+/*.frag
+/*.vert
+/libOVR*.so*
+
+# Generated Binaries
+/fake
+/dgr-relay
+/ogl2-slideshow
+/ogl2-texture
+/ogl2-triangle
+/viewer
+/prerend
+/texture
+/triangle
+/triangle-color
+/triangle-shade
+/picker
+/slerp
+/explode
+/teartest
+/text
+/flock
+/ik

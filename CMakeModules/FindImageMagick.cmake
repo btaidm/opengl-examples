@@ -1,3 +1,13 @@
+
+# IVS - installed version is too old.
+set(CMAKE_LIBRARY_PATH "/research/kuhl/public-vrlab/ImageMagick-6.8.9-5/magick/.libs/" ${CMAKE_LIBRARY_PATH})
+set(CMAKE_INCLUDE_PATH "/research/kuhl/public-vrlab/ImageMagick-6.8.9-5/" ${CMAKE_INCLUDE_PATH})
+# CCSR - installed version is too old.
+set(CMAKE_LIBRARY_PATH "/home/kuhl/public-vrlab/ImageMagick-6.8.9-6/magick/.libs/" ${CMAKE_LIBRARY_PATH})
+set(CMAKE_INCLUDE_PATH "/home/kuhl/public-vrlab/ImageMagick-6.8.9-6/" ${CMAKE_INCLUDE_PATH})
+
+
+
 # This file is here because the FindImageMagick.cmake file that comes
 # with older versions of cmake does not work as well as this
 # one. Specifically, older versions of this file do not correctly
@@ -138,7 +148,19 @@ function(FIND_IMAGEMAGICK_API component header)
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\ImageMagick\\Current;BinPath]/include"
     PATH_SUFFIXES
       ImageMagick ImageMagick-6
-    DOC "Path to the ImageMagick include dir."
+    DOC "Path to the ImageMagick arch-independent include dir."
+    )
+  find_path(ImageMagick_${component}_ARCH_INCLUDE_DIR
+    NAMES magick/magick-baseconfig.h
+    HINTS
+      ${PC_${component}_INCLUDEDIR}
+      ${PC_${component}_INCLUDE_DIRS}
+    PATHS
+      ${ImageMagick_INCLUDE_DIRS}
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\ImageMagick\\Current;BinPath]/include"
+    PATH_SUFFIXES
+      ImageMagick ImageMagick-6
+    DOC "Path to the ImageMagick arch-specific include dir."
     )
   find_library(ImageMagick_${component}_LIBRARY
     NAMES ${ARGN}
@@ -147,12 +169,24 @@ function(FIND_IMAGEMAGICK_API component header)
     DOC "Path to the ImageMagick Magick++ library."
     )
 
+  # old version have only indep dir
   if(ImageMagick_${component}_INCLUDE_DIR AND ImageMagick_${component}_LIBRARY)
     set(ImageMagick_${component}_FOUND TRUE PARENT_SCOPE)
 
-    list(APPEND ImageMagick_INCLUDE_DIRS
+    # Construct per-component include directories.
+    set(ImageMagick_${component}_INCLUDE_DIRS
       ${ImageMagick_${component}_INCLUDE_DIR}
       )
+    if(ImageMagick_${component}_ARCH_INCLUDE_DIR)
+      list(APPEND ImageMagick_${component}_INCLUDE_DIRS
+        ${ImageMagick_${component}_ARCH_INCLUDE_DIR})
+    endif()
+    list(REMOVE_DUPLICATES ImageMagick_${component}_INCLUDE_DIRS)
+    set(ImageMagick_${component}_INCLUDE_DIRS
+      ${ImageMagick_${component}_INCLUDE_DIRS} PARENT_SCOPE)
+
+    # Add the per-component include directories to the full include dirs.
+    list(APPEND ImageMagick_INCLUDE_DIRS ${ImageMagick_${component}_INCLUDE_DIRS})
     list(REMOVE_DUPLICATES ImageMagick_INCLUDE_DIRS)
     set(ImageMagick_INCLUDE_DIRS ${ImageMagick_INCLUDE_DIRS} PARENT_SCOPE)
 
